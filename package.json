@@ -1,0 +1,24 @@
+{
+    "name": "Extory",
+    "version": "1.0.0",
+    "description": "Scratch 扩展编辑器",
+    "main": "index.js",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "@emotion/react": "^11.14.0",
+        "@emotion/styled": "^11.14.1",
+        "@mui/icons-material": "^7.3.8",
+        "@mui/material": "^7.3.8",
+        "blockly": "^10.4.3",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-react": "^4.0.0",
+        "vite": "^4.3.9"
+    }
+}

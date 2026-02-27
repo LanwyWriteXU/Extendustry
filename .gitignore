@@ -1,0 +1,6 @@
+# 你不应该上传 node 库
+/node_modules
+npm-*
+
+# 迷之 MacOS 文件
+.DS_Store
