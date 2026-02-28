@@ -1,6 +1,6 @@
 {
-    "name": "Extory",
-    "version": "1.0.0",
+    "name": "Extendustry",
+    "version": "0.1.0",
     "description": "Scratch 扩展编辑器",
     "main": "index.js",
     "scripts": {
@@ -11,6 +11,7 @@
     "dependencies": {
         "@emotion/react": "^11.14.0",
         "@emotion/styled": "^11.14.1",
+        "@hello-pangea/dnd": "^16.6.0",
         "@mui/icons-material": "^7.3.8",
         "@mui/material": "^7.3.8",
         "blockly": "^10.4.3",

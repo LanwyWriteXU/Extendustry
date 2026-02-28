@@ -12,9 +12,20 @@ import {
   AppBar, 
   Toolbar,
   Button,
-  Stack
+  Stack,
+  IconButton,
+  createTheme,
+  ThemeProvider,
+  CssBaseline,
+  Tooltip,
+  Select,
+  MenuItem,
+  TextField
 } from '@mui/material';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
+import logoSvg from '../logo.svg';
 
 // 导入 Zelos 渲染器
 import 'blockly/blocks';
@@ -23,9 +34,26 @@ import 'blockly/javascript';
 function App() {
   const previewRef = useRef(null);
   const workspaceRef = useRef(null);
-  const [blockElements, setBlockElements] = useState([]);
-  const [blockName, setBlockName] = useState('标签');
-  const elementCounter = useRef(0);
+  const [blockElements, setBlockElements] = useState([{ id: 1, type: 'label', text: '默认积木文本' }]);
+  const [blockName, setBlockName] = useState('默认积木文本');
+  const [blockType, setBlockType] = useState('COMMAND');
+  const [branchCount, setBranchCount] = useState(2);
+  const elementCounter = useRef(1);
+  const [darkMode, setDarkMode] = useState(false);
+
+  // 创建主题
+  const theme = createTheme({
+    palette: {
+      mode: darkMode ? 'dark' : 'light',
+      primary: {
+        main: '#667eea',
+      },
+      background: {
+        default: darkMode ? '#121212' : '#f5f5f5',
+        paper: darkMode ? '#1e1e1e' : '#ffffff',
+      },
+    },
+  });
 
   // 初始化 Blockly 工作区
   useEffect(() => {
@@ -37,15 +65,15 @@ function App() {
       const workspace = Blockly.inject(previewRef.current, {
         renderer: 'zelos',
         theme: Blockly.Themes.Classic,
-        media: 'src/assets/media',
+        media: './media',
         scrollbars: true,
         readOnly: false,
         zoom: {
           controls: true,
           wheel: true,
           startScale: 1.0,
-          maxScale: 3.0,
-          minScale: 1.0,
+          maxScale: 1.5,
+          minScale: 0.5,
           scaleSpeed: 1.2
         },
         grid: {
@@ -80,7 +108,7 @@ function App() {
     if (workspaceRef.current) {
       updateBlock(workspaceRef.current);
     }
-  }, [blockElements, blockName]);
+  }, [blockElements, blockName, blockType, branchCount]);
 
   // 禁用右键菜单
   const disableContextMenu = (workspace) => {
@@ -133,61 +161,121 @@ function App() {
   const updateBlock = (workspace) => {
     workspace.clear();
 
-    const blockType = 'dynamic_custom_block';
+    const blockTypeName = 'dynamic_custom_block';
+    
+    // 预扫描：将元素分组到不同的 Input 中
+    // 每组要么是 DummyInput，要么是 ValueInput（如果包含布尔值）
+    const inputGroups = [];
+    let currentGroup = [];
+    
+    blockElements.forEach((element, index) => {
+      if (element.type === 'boolean') {
+        // 布尔值开始一个新的 ValueInput 组
+        // 如果当前组已有元素，将它们合并到这个 ValueInput 组中
+        currentGroup.push(element);
+        inputGroups.push(currentGroup);
+        currentGroup = [];
+      } else {
+        // 其他元素添加到当前组
+        currentGroup.push(element);
+      }
+    });
+    
+    // 添加最后一组
+    if (currentGroup.length > 0) {
+      inputGroups.push(currentGroup);
+    }
     
     // 重新注册积木类型
-    Blockly.Blocks[blockType] = {
+    Blockly.Blocks[blockTypeName] = {
       init: function() {
-        let currentInput = null;
+        // 设置积木为 inline 模式，所有输入在同一行显示
+        this.setInputsInline(true);
         
-        // 添加所有元素
-        blockElements.forEach((element, index) => {
-          if (element.type === 'label') {
-            // 标签添加到最后一个输入
-            if (currentInput) {
-              currentInput.appendField(element.text);
-            } else {
-              // 如果是第一个元素，创建新的 input
-              currentInput = this.appendDummyInput()
-                .appendField(element.text);
-            }
-          } else if (element.type === 'statement') {
-            // 语句输入（分支）- 创建新 input
-            currentInput = this.appendStatementInput(`STACK_${element.id}`)
-              .setCheck(null);
-          } else if (element.type === 'boolean') {
-            // 布尔值 - 创建值输入，设置为 Boolean 类型
-            currentInput = this.appendValueInput(`BOOLEAN_${element.id}`)
+        // 根据积木类型设置属性
+        if (blockType === 'COMMAND') {
+          this.setPreviousStatement(true, null);
+          this.setNextStatement(true, null);
+        } else if (blockType === 'REPORTER') {
+          this.setOutput(true, 'Any');
+        } else if (blockType === 'BOOLEAN') {
+          this.setOutput(true, 'Boolean');
+        } else if (blockType === 'EVENT' || blockType === 'HAT') {
+          this.setNextStatement(true, null);
+        }
+        
+        // 遍历每个组，创建对应的 Input
+        inputGroups.forEach((group, groupIndex) => {
+          // 检查这个组是否包含布尔值
+          const hasBoolean = group.some(e => e.type === 'boolean');
+          
+          if (hasBoolean) {
+            // 布尔值 - 创建 ValueInput
+            const booleanElement = group.find(e => e.type === 'boolean');
+            const valueInput = this.appendValueInput(`BOOLEAN_${booleanElement.id}`)
               .setCheck("Boolean");
-          } else if (['text', 'number', 'dropdown', 'colour'].includes(element.type)) {
-            // 字段类型 - 如果前一个元素是分支，需要创建新 input
-            const prevElement = blockElements[index - 1];
-            if (prevElement && (prevElement.type === 'statement' || prevElement.type === 'boolean')) {
-              currentInput = this.appendDummyInput();
-            }
             
-            // 如果没有当前 input，创建一个
-            if (!currentInput) {
-              currentInput = this.appendDummyInput();
-            }
+            // 将组中的其他元素作为字段添加到这个 ValueInput
+            group.forEach(element => {
+              if (element.type !== 'boolean') {
+                switch (element.type) {
+                  case 'label':
+                    valueInput.appendField(element.text);
+                    break;
+                  case 'text':
+                    valueInput.appendField(new Blockly.FieldTextInput(element.defaultValue || '文本'), `FIELD_TEXT_${element.id}`);
+                    break;
+                  case 'number':
+                    valueInput.appendField(new Blockly.FieldNumber(element.defaultValue || 0), `FIELD_NUMBER_${element.id}`);
+                    break;
+                  case 'dropdown':
+                    valueInput.appendField(new Blockly.FieldDropdown(element.options || [['选项1', 'OPT1'], ['选项2', 'OPT2']]), `FIELD_DROPDOWN_${element.id}`);
+                    break;
+                  case 'colour':
+                    valueInput.appendField(new Blockly.FieldColour(element.defaultValue || '#ff0000'), `FIELD_COLOUR_${element.id}`);
+                    break;
+                }
+              }
+            });
+          } else {
+            // 普通 Input - 创建 DummyInput
+            const dummyInput = this.appendDummyInput();
             
-            // 添加字段到当前 input
-            switch (element.type) {
-              case 'text':
-                currentInput.appendField(new Blockly.FieldTextInput(element.defaultValue || '文本'), `FIELD_TEXT_${element.id}`);
-                break;
-              case 'number':
-                currentInput.appendField(new Blockly.FieldNumber(element.defaultValue || 0), `FIELD_NUMBER_${element.id}`);
-                break;
-              case 'dropdown':
-                currentInput.appendField(new Blockly.FieldDropdown(element.options || [['选项1', 'OPT1'], ['选项2', 'OPT2']]), `FIELD_DROPDOWN_${element.id}`);
-                break;
-              case 'colour':
-                currentInput.appendField(new Blockly.FieldColour(element.defaultValue || '#ff0000'), `FIELD_COLOUR_${element.id}`);
-                break;
-            }
-          } 
+            // 将组中的所有元素添加到这个 DummyInput
+            group.forEach(element => {
+              switch (element.type) {
+                case 'label':
+                  dummyInput.appendField(element.text);
+                  break;
+                case 'text':
+                  dummyInput.appendField(new Blockly.FieldTextInput(element.defaultValue || '文本'), `FIELD_TEXT_${element.id}`);
+                  break;
+                case 'number':
+                  dummyInput.appendField(new Blockly.FieldNumber(element.defaultValue || 0), `FIELD_NUMBER_${element.id}`);
+                  break;
+                case 'dropdown':
+                  dummyInput.appendField(new Blockly.FieldDropdown(element.options || [['选项1', 'OPT1'], ['选项2', 'OPT2']]), `FIELD_DROPDOWN_${element.id}`);
+                  break;
+                case 'colour':
+                  dummyInput.appendField(new Blockly.FieldColour(element.defaultValue || '#ff0000'), `FIELD_COLOUR_${element.id}`);
+                  break;
+              }
+            });
+          }
         });
+        
+        // 根据块类型添加固定分支
+        if (blockType === 'CONDITIONAL') {
+          // 添加N个分支
+          for (let i = 0; i < branchCount; i++) {
+            this.appendStatementInput(`BRANCH_${i}`)
+              .setCheck(null);
+          }
+        } else if (blockType === 'LOOP') {
+          // 固定一个分支
+          this.appendStatementInput('BRANCH_0')
+            .setCheck(null);
+        }
         
         this.setColour(230);
         this.setTooltip('动态自定义积木');
@@ -196,7 +284,7 @@ function App() {
     };
 
     // 创建积木实例
-    const block = workspace.newBlock(blockType);
+    const block = workspace.newBlock(blockTypeName);
     block.initSvg();
     block.render();
     block.moveBy(20, 20);
@@ -292,14 +380,32 @@ function App() {
   };
 
   // 移动元素
-  const moveElement = (index, direction) => {
-    if (direction === 'up' && index > 0) {
+  const moveElement = (sourceIndex, destinationIndex) => {
+    // 支持两种调用方式：
+    // 1. 旧方式：moveElement(index, 'up'/'down')
+    // 2. 新方式：moveElement(sourceIndex, destinationIndex)
+    
+    if (typeof destinationIndex === 'string') {
+      // 旧方式：direction 参数
+      const direction = destinationIndex;
+      if (direction === 'up' && sourceIndex > 0) {
+        const newElements = [...blockElements];
+        [newElements[sourceIndex - 1], newElements[sourceIndex]] = [newElements[sourceIndex], newElements[sourceIndex - 1]];
+        setBlockElements(newElements);
+      } else if (direction === 'down' && sourceIndex < blockElements.length - 1) {
+        const newElements = [...blockElements];
+        [newElements[sourceIndex], newElements[sourceIndex + 1]] = [newElements[sourceIndex + 1], newElements[sourceIndex]];
+        setBlockElements(newElements);
+      }
+    } else {
+      // 新方式：拖拽排序
+      if (sourceIndex === destinationIndex) {
+        return;
+      }
+      
       const newElements = [...blockElements];
-      [newElements[index - 1], newElements[index]] = [newElements[index], newElements[index - 1]];
-      setBlockElements(newElements);
-    } else if (direction === 'down' && index < blockElements.length - 1) {
-      const newElements = [...blockElements];
-      [newElements[index], newElements[index + 1]] = [newElements[index + 1], newElements[index]];
+      const [movedElement] = newElements.splice(sourceIndex, 1);
+      newElements.splice(destinationIndex, 0, movedElement);
       setBlockElements(newElements);
     }
   };
@@ -312,50 +418,114 @@ function App() {
 
   // 清空工作区
   const clearWorkspace = () => {
-    setBlockElements([]);
-    elementCounter.current = 0;
+    setBlockElements([{ id: 1, type: 'label', text: '默认积木文本' }]);
+    elementCounter.current = 1;
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-      <AppBar position="static" elevation={0} sx={{ background: 'rgba(255, 255, 255, 0.95)' }}>
-        <Toolbar>
-          <Typography variant="h5" component="div" sx={{ flexGrow: 1, color: '#2d3748', fontWeight: 600 }}>
-            Extendustry
-          </Typography>
-        </Toolbar>
-      </AppBar>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+        <AppBar position="static" elevation={1} sx={{ bgcolor: 'background.paper', color: 'text.primary' }}>
+          <Toolbar>
+            <Box
+              component="img"
+              src={logoSvg}
+              alt="Logo"
+              sx={{
+                height: 32,
+                width: 32,
+                mr: 2,
+              }}
+            />
+            <Typography variant="h5" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
+              Extendustry
+            </Typography>
+            <IconButton onClick={() => setDarkMode(!darkMode)} color="inherit">
+              {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
+            </IconButton>
+          </Toolbar>
+        </AppBar>
 
       <Container maxWidth="xl" sx={{ py: 4 }}>
         <Stack direction="row" spacing={3} sx={{ height: 'calc(100vh - 120px)' }}>
           {/* 左侧面板 */}
           <Stack spacing={2} sx={{ width: 'fit-content' }}>
-            <Paper elevation={3} sx={{ 
+            <Paper elevation={1} sx={{ 
               p: 3, 
-              borderRadius: 3, 
+              borderRadius: 2, 
               width: 480,
-              height: 360
+              height: 360,
+              bgcolor: 'background.paper'
             }}>
-              <Typography variant="h6" gutterBottom sx={{ color: '#2d3748' }}>
+              <Typography variant="h6" gutterBottom color="text.primary">
                 积木预览
               </Typography>
-              <Typography variant="body2" sx={{ color: '#718096', mb: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 使用右侧工具栏添加积木元素
               </Typography>
               <div ref={previewRef} className="blockly-preview"></div>
             </Paper>
-
-            {/* 旧的工具栏 - 可以保留或者删除 */}
+            
+            <Paper elevation={1} sx={{ 
+              p: 3, 
+              borderRadius: 2, 
+              width: 480,
+              bgcolor: 'background.paper'
+            }}>
+              <Typography variant="h6" gutterBottom color="text.primary">
+                积木类型
+              </Typography>
+              <Select
+                value={blockType}
+                onChange={(e) => setBlockType(e.target.value)}
+                fullWidth
+                sx={{
+                  mt: 2,
+                }}
+              >
+                <MenuItem value="COMMAND">COMMAND</MenuItem>
+                <MenuItem value="REPORTER">REPORTER</MenuItem>
+                <MenuItem value="BOOLEAN">BOOLEAN</MenuItem>
+                <MenuItem value="EVENT">EVENT</MenuItem>
+                <MenuItem value="HAT">HAT</MenuItem>
+                <MenuItem value="LOOP">LOOP</MenuItem>
+                <MenuItem value="CONDITIONAL">CONDITIONAL</MenuItem>
+              </Select>
+              {blockType === 'CONDITIONAL' && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    分支数量
+                  </Typography>
+                  <TextField
+                    type="number"
+                    value={branchCount}
+                    onChange={(e) => setBranchCount(parseInt(e.target.value) || 2)}
+                    fullWidth
+                    inputProps={{ min: 1 }}
+                    sx={{
+                      mt: 1,
+                    }}
+                  />
+                </Box>
+              )}
+              {blockType === 'LOOP' && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  固定 1 个分支
+                </Typography>
+              )}
+            </Paper>
           </Stack>
 
           {/* 右侧面板 */}
-          <Paper elevation={3} sx={{ 
+          <Paper elevation={1} sx={{ 
             flex: 1, 
-            borderRadius: 3, 
+            borderRadius: 2, 
             p: 3, 
             display: 'flex', 
             flexDirection: 'column',
-            maxHeight: 'calc(100vh - 120px)'
+            maxHeight: 'calc(100vh - 120px)',
+            bgcolor: 'background.paper'
           }}>
             <Box sx={{ 
               display: 'flex', 
@@ -363,9 +533,10 @@ function App() {
               alignItems: 'center',
               mb: 3,
               pb: 2,
-              borderBottom: '2px solid #e0e0e0'
+              borderBottom: '1px solid',
+              borderColor: 'divider'
             }}>
-              <Typography variant="h6" sx={{ color: '#2d3748' }}>
+              <Typography variant="h6" color="text.primary">
                 元素列表
               </Typography>
               <Stack direction="row" spacing={2}>
@@ -376,25 +547,32 @@ function App() {
                   onAddDropdown={addDropdown}
                   onAddColourPicker={addColourPicker}
                   onAddBooleanInput={addBooleanInput}
-                  onAddStatementInput={addStatementInput}
                 />
-                <Button
-                  variant="outlined"
-                  startIcon={<DeleteSweepIcon />}
-                  onClick={clearWorkspace}
-                  sx={{
-                    borderRadius: '20px',
-                    textTransform: 'none',
-                    borderColor: '#f56565',
-                    color: '#f56565',
-                    '&:hover': {
+                <Tooltip title="清空全部" arrow>
+                  <Button
+                    variant="outlined"
+                    onClick={clearWorkspace}
+                    sx={{
+                      borderRadius: '50%',
+                      width: 48,
+                      height: 48,
+                      minWidth: 48,
+                      minHeight: 48,
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       borderColor: '#e53e3e',
-                      backgroundColor: 'rgba(245, 101, 101, 0.05)',
-                    },
-                  }}
-                >
-                  清空全部
-                </Button>
+                      color: '#e53e3e',
+                      '&:hover': {
+                        backgroundColor: '#e53e3e',
+                        color: '#ffffff',
+                      },
+                    }}
+                  >
+                    <DeleteSweepIcon />
+                  </Button>
+                </Tooltip>
               </Stack>
             </Box>
             <Box sx={{ flex: 1, overflowY: 'auto', pr: 1 }}>
@@ -409,7 +587,8 @@ function App() {
         </Stack>
       </Container>
     </Box>
-  );
-}
+      </ThemeProvider>
+    );
+  }
 
 export default App;

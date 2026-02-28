@@ -2,9 +2,10 @@ import React from 'react';
 import Button from '@mui/material/Button';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import Tooltip from '@mui/material/Tooltip';
 import AddIcon from '@mui/icons-material/Add';
 
-function AddElementMenu({ onAddLabel, onAddTextInput, onAddNumberInput, onAddDropdown, onAddColourPicker, onAddBooleanInput, onAddStatementInput }) {
+function AddElementMenu({ onAddLabel, onAddTextInput, onAddNumberInput, onAddDropdown, onAddColourPicker, onAddBooleanInput }) {
   const [anchorEl, setAnchorEl] = React.useState(null);
   const open = Boolean(anchorEl);
 
@@ -37,35 +38,46 @@ function AddElementMenu({ onAddLabel, onAddTextInput, onAddNumberInput, onAddDro
       case 'boolean':
         onAddBooleanInput();
         break;
-      case 'statement':
-        onAddStatementInput();
-        break;
     }
   };
 
   return (
     <div>
-      <Button
-        variant="contained"
-        startIcon={<AddIcon />}
-        onClick={handleClick}
-        sx={{
-          borderRadius: '20px',
-          textTransform: 'none',
-          px: 3,
-          py: 1,
-          fontSize: '14px',
-          fontWeight: 600,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          '&:hover': {
-            background: 'linear-gradient(135deg, #5568d3 0%, #653a90 100%)',
-            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
-          },
-          boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
-        }}
-      >
-        添加元素
-      </Button>
+      <Tooltip title="添加元素" arrow>
+        <Button
+          variant="contained"
+          onClick={handleClick}
+          sx={{
+            borderRadius: '50%',
+            width: 48,
+            height: 48,
+            minWidth: 48,
+            minHeight: 48,
+            padding: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <AddIcon />
+        </Button>
+      </Tooltip>
+      <style>{`
+        @keyframes expandDown {
+          from {
+            opacity: 0;
+            transform: scaleY(0) translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: scaleY(1) translateY(0);
+          }
+        }
+        .MuiMenu-paper {
+          animation: expandDown 0.2s ease-out forwards;
+          transform-origin: top center;
+        }
+      `}</style>
       <Menu
         anchorEl={anchorEl}
         open={open}
@@ -104,9 +116,6 @@ function AddElementMenu({ onAddLabel, onAddTextInput, onAddNumberInput, onAddDro
         </MenuItem>
         <MenuItem onClick={() => handleAdd('boolean')} sx={{ py: 2 }}>
           <span>布尔值</span>
-        </MenuItem>
-        <MenuItem onClick={() => handleAdd('statement')} sx={{ py: 2 }}>
-          <span>分支</span>
         </MenuItem>
       </Menu>
     </div>
