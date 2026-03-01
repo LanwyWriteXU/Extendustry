@@ -494,6 +494,37 @@ function AppContent() {
     checkUnsavedChanges(newBlock);
   };
 
+  // 验证操作码：检查是否包含特殊符号
+  const validateOpcode = (opcode) => {
+    // 只允许字母、数字、下划线，不允许其他特殊符号
+    const regex = /^[a-zA-Z0-9_]+$/;
+    return regex.test(opcode);
+  };
+
+  // 检查操作码是否与其他积木重复
+  const isOpcodeDuplicate = (opcode) => {
+    if (!opcode || opcode.trim() === '') return false;
+    const allBlocks = getAllBlocks();
+    // 排除当前正在编辑的积木
+    return allBlocks.some(block => block.id !== currentBlock.id && block.opcode === opcode);
+  };
+
+  // 验证元素ID：检查是否包含非法字符
+  const validateElementName = (elementName) => {
+    // 只允许字母、数字、下划线，不允许其他特殊符号
+    const regex = /^[a-zA-Z0-9_]+$/;
+    return regex.test(elementName);
+  };
+
+  // 验证元素ID是否重复
+  const isElementNameDuplicate = (elementName, currentElementId) => {
+    if (!elementName || elementName.trim() === '') return false;
+    // 检查当前积木中的其他元素是否有相同的name
+    return currentBlock.elements.some(
+      element => element.id !== currentElementId && element.name === elementName
+    );
+  };
+
   // 添加文本字段
   const addTextInput = () => {
     elementCounter.current++;
@@ -1156,13 +1187,46 @@ function AppContent() {
                   <TextField
                     value={currentBlock.opcode}
                     onChange={(e) => {
-                      const newBlock = { ...currentBlock, opcode: e.target.value };
+                      const newOpcode = e.target.value;
+                      const newBlock = { ...currentBlock, opcode: newOpcode };
                       setCurrentBlock(newBlock);
                       checkUnsavedChanges(newBlock);
+                    }}
+                    onBlur={(e) => {
+                      const opcode = e.target.value;
+                      // 验证操作码是否为空
+                      if (!opcode || opcode.trim() === '') {
+                        showError('操作码不能为空');
+                        return;
+                      }
+                      // 验证操作码格式
+                      if (!validateOpcode(opcode)) {
+                        showError('操作码只能包含字母、数字和下划线，不能包含特殊符号');
+                        return;
+                      }
+                      // 验证操作码是否重复
+                      if (isOpcodeDuplicate(opcode)) {
+                        showError('操作码已存在，请使用不同的名称');
+                        return;
+                      }
                     }}
                     fullWidth
                     size="small"
                     placeholder="例如: my_custom_block"
+                    error={
+                      !currentBlock.opcode || currentBlock.opcode.trim() === '' ||
+                      (currentBlock.opcode && !validateOpcode(currentBlock.opcode)) ||
+                      (currentBlock.opcode && isOpcodeDuplicate(currentBlock.opcode))
+                    }
+                    helperText={
+                      !currentBlock.opcode || currentBlock.opcode.trim() === ''
+                        ? '操作码不能为空'
+                        : currentBlock.opcode && !validateOpcode(currentBlock.opcode)
+                        ? '操作码只能包含字母、数字和下划线'
+                        : currentBlock.opcode && isOpcodeDuplicate(currentBlock.opcode)
+                        ? '操作码已存在'
+                        : ''
+                    }
                   />
                 </Box>
                 <Box sx={{ mt: 2 }}>
@@ -1293,6 +1357,8 @@ function AppContent() {
                   onUpdate={updateElement}
                   onMove={moveElement}
                   onRemove={removeElement}
+                  isElementNameDuplicate={isElementNameDuplicate}
+                  validateElementName={validateElementName}
                 />
               </Box>
             </Paper>

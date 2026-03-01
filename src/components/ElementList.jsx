@@ -14,7 +14,7 @@ import DragHandleIcon from '@mui/icons-material/DragHandle';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
-function ElementList({ elements, onUpdate, onMove, onRemove }) {
+function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplicate, validateElementName }) {
   const [expandedIndex, setExpandedIndex] = useState(null);
 
   const getTypeLabel = (type) => {
@@ -46,16 +46,49 @@ function ElementList({ elements, onUpdate, onMove, onRemove }) {
   const renderElementFields = (element, index) => {
     const fields = [];
     
-    // ID字段
+    // ID字段（标签类型的ID可以为空）
     fields.push(
       <Box key="id" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
         <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>ID:</Typography>
         <TextField
           size="small"
           value={element.name}
-          onChange={(e) => onUpdate(index, { name: e.target.value })}
+          onBlur={(e) => {
+            const newName = e.target.value;
+            // 标签类型的ID可以为空，其他类型必须非空
+            if (element.type !== 'label' && (!newName || newName.trim() === '')) {
+              // 显示错误提示，不更新数据
+              return;
+            }
+            // 如果不为空，验证ID是否包含非法字符
+            if (newName && newName.trim() !== '' && validateElementName && !validateElementName(newName)) {
+              // 显示错误提示，不更新数据
+              return;
+            }
+            // 如果不为空，验证ID是否重复
+            if (newName && newName.trim() !== '' && isElementNameDuplicate && isElementNameDuplicate(newName, element.id)) {
+              // 显示错误提示，不更新数据
+              return;
+            }
+            // 验证通过，更新数据
+            onUpdate(index, { name: newName });
+          }}
           sx={{ flex: 1 }}
           variant="outlined"
+          error={
+            element.type !== 'label' && (!element.name || element.name.trim() === '') ||
+            (element.name && element.name.trim() !== '' && validateElementName && !validateElementName(element.name)) ||
+            (element.name && element.name.trim() !== '' && isElementNameDuplicate && isElementNameDuplicate(element.name, element.id))
+          }
+          helperText={
+            element.type !== 'label' && (!element.name || element.name.trim() === '')
+              ? 'ID不能为空'
+              : element.name && element.name.trim() !== '' && validateElementName && !validateElementName(element.name)
+              ? 'ID只能包含字母、数字和下划线'
+              : element.name && element.name.trim() !== '' && isElementNameDuplicate && isElementNameDuplicate(element.name, element.id)
+              ? 'ID已存在，请使用不同的名称'
+              : ''
+          }
         />
       </Box>
     );
@@ -67,8 +100,11 @@ function ElementList({ elements, onUpdate, onMove, onRemove }) {
           <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>文本:</Typography>
           <TextField
             size="small"
-            value={element.text}
-            onChange={(e) => onUpdate(index, { text: e.target.value })}
+            value={element.text || ''}
+            onChange={(e) => {
+              // 仅用于UI更新，不触发预览更新
+              onUpdate(index, { text: e.target.value });
+            }}
             sx={{ flex: 1 }}
             variant="outlined"
           />
@@ -80,7 +116,7 @@ function ElementList({ elements, onUpdate, onMove, onRemove }) {
           <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>默认值:</Typography>
           <TextField
             size="small"
-            value={element.defaultValue}
+            value={element.defaultValue || ''}
             onChange={(e) => onUpdate(index, { defaultValue: e.target.value })}
             sx={{ flex: 1 }}
             variant="outlined"
@@ -95,7 +131,10 @@ function ElementList({ elements, onUpdate, onMove, onRemove }) {
             size="small"
             type="number"
             value={element.defaultValue}
-            onChange={(e) => onUpdate(index, { defaultValue: parseFloat(e.target.value) })}
+            onChange={(e) => {
+              const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+              onUpdate(index, { defaultValue: value });
+            }}
             sx={{ flex: 1 }}
             variant="outlined"
           />
