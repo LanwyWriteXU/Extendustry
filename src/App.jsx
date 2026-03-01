@@ -58,6 +58,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CloseIcon from '@mui/icons-material/Close';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import MenuIcon from '@mui/icons-material/Menu';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import Fade from '@mui/material/Fade';
 import logoSvg from '../logo.svg';
 
@@ -777,6 +779,233 @@ function AppContent() {
     }, 0);
   };
 
+  // 向上移动积木
+  const handleMoveBlockUp = (e, index) => {
+    e.stopPropagation();
+    if (index > 0) {
+      const newList = [...blockLibraryList];
+      [newList[index - 1], newList[index]] = [newList[index], newList[index - 1]];
+      setBlockLibraryList(newList);
+    }
+  };
+
+  // 向下移动积木
+  const handleMoveBlockDown = (e, index) => {
+    e.stopPropagation();
+    if (index < blockLibraryList.length - 1) {
+      const newList = [...blockLibraryList];
+      [newList[index], newList[index + 1]] = [newList[index + 1], newList[index]];
+      setBlockLibraryList(newList);
+    }
+  };
+
+  // 为积木库列表项创建预览工作区的引用映射
+  const blockPreviewRefs = useRef({});
+
+  // 渲染单个积木的预览
+  const renderBlockPreview = (block, containerElement) => {
+    if (!containerElement || !block) return;
+
+    // 清空容器
+    containerElement.innerHTML = '';
+
+    // 创建临时工作区用于渲染预览
+    const tempWorkspace = Blockly.inject(containerElement, {
+      renderer: 'zelos',
+      theme: Blockly.Themes.Classic,
+      media: './media',
+      scrollbars: false,
+      readOnly: true,
+      zoom: {
+        controls: false,
+        wheel: false,
+        startScale: 0.85,
+        maxScale: 0.85,
+        minScale: 0.85,
+        scaleSpeed: 1.0
+      },
+      grid: {
+        spacing: 1,
+        length: 1,
+        colour: 'transparent',
+        snap: false
+      },
+      move: {
+        scrollbars: false,
+        drag: false,
+        wheel: false
+      }
+    });
+
+    // 注册临时积木类型
+    const tempBlockTypeName = `preview_block_${block.id}`;
+    Blockly.Blocks[tempBlockTypeName] = {
+      init: function() {
+        this.setInputsInline(true);
+        
+        // 根据积木类型设置属性
+        if (block.type === 'COMMAND' || block.type === 'LOOP' || block.type === 'CONDITIONAL') {
+          this.setPreviousStatement(true, null);
+          this.setNextStatement(true, null);
+        } else if (block.type === 'REPORTER') {
+          this.setOutput(true, 'Any');
+        } else if (block.type === 'BOOLEAN') {
+          this.setOutput(true, 'Boolean');
+        } else if (block.type === 'EVENT' || block.type === 'HAT') {
+          this.setNextStatement(true, null);
+        }
+        
+        // 预扫描：将元素分组到不同的 Input 中
+        const inputGroups = [];
+        let currentGroup = [];
+        
+        block.elements.forEach((element, index) => {
+          if (element.type === 'boolean') {
+            // 布尔值开始一个新的 ValueInput 组
+            currentGroup.push(element);
+            inputGroups.push(currentGroup);
+            currentGroup = [];
+          } else {
+            // 其他元素添加到当前组
+            currentGroup.push(element);
+          }
+        });
+        
+        // 添加最后一组
+        if (currentGroup.length > 0) {
+          inputGroups.push(currentGroup);
+        }
+        
+        // 遍历每个组，创建对应的 Input
+        inputGroups.forEach((group, groupIndex) => {
+          // 检查这个组是否包含布尔值
+          const hasBoolean = group.some(e => e.type === 'boolean');
+          
+          if (hasBoolean) {
+            // 布尔值 - 创建 ValueInput
+            const booleanElement = group.find(e => e.type === 'boolean');
+            const valueInput = this.appendValueInput(`BOOLEAN_${booleanElement.id}`)
+              .setCheck("Boolean");
+            
+            // 将组中的其他元素作为字段添加到这个 ValueInput
+            group.forEach(element => {
+              if (element.type !== 'boolean') {
+                switch (element.type) {
+                  case 'label':
+                    valueInput.appendField(element.text);
+                    break;
+                  case 'text':
+                    valueInput.appendField(new Blockly.FieldTextInput(element.defaultValue || '文本'), `FIELD_TEXT_${element.id}`);
+                    break;
+                  case 'number':
+                    valueInput.appendField(new Blockly.FieldNumber(element.defaultValue || 0), `FIELD_NUMBER_${element.id}`);
+                    break;
+                  case 'dropdown':
+                    valueInput.appendField(new Blockly.FieldDropdown(element.options || [['选项1', 'OPT1'], ['选项2', 'OPT2']]), `FIELD_DROPDOWN_${element.id}`);
+                    break;
+                  case 'colour':
+                    valueInput.appendField(new Blockly.FieldColour(element.defaultValue || '#ff0000'), `FIELD_COLOUR_${element.id}`);
+                    break;
+                }
+              }
+            });
+          } else {
+            // 普通 Input - 创建 DummyInput
+            const dummyInput = this.appendDummyInput();
+            
+            // 将组中的所有元素添加到这个 DummyInput
+            group.forEach(element => {
+              switch (element.type) {
+                case 'label':
+                  dummyInput.appendField(element.text);
+                  break;
+                case 'text':
+                  dummyInput.appendField(new Blockly.FieldTextInput(element.defaultValue || '文本'), `FIELD_TEXT_${element.id}`);
+                  break;
+                case 'number':
+                  dummyInput.appendField(new Blockly.FieldNumber(element.defaultValue || 0), `FIELD_NUMBER_${element.id}`);
+                  break;
+                case 'dropdown':
+                  dummyInput.appendField(new Blockly.FieldDropdown(element.options || [['选项1', 'OPT1'], ['选项2', 'OPT2']]), `FIELD_DROPDOWN_${element.id}`);
+                  break;
+                case 'colour':
+                  dummyInput.appendField(new Blockly.FieldColour(element.defaultValue || '#ff0000'), `FIELD_COLOUR_${element.id}`);
+                  break;
+              }
+            });
+          }
+        });
+        
+        // 根据块类型添加固定分支
+        if (block.type === 'CONDITIONAL') {
+          // 添加N个分支
+          for (let i = 0; i < block.branchCount; i++) {
+            this.appendStatementInput(`BRANCH_${i}`)
+              .setCheck(null);
+          }
+        } else if (block.type === 'LOOP') {
+          // 固定一个分支
+          this.appendStatementInput('BRANCH_0')
+            .setCheck(null);
+        }
+        
+        this.setColour(230);
+        this.setTooltip(block.opcode);
+        this.setHelpUrl('');
+      }
+    };
+
+    // 创建积木实例
+    const previewBlock = tempWorkspace.newBlock(tempBlockTypeName);
+    previewBlock.initSvg();
+    previewBlock.render();
+    
+    // 积木居中显示
+    const metrics = tempWorkspace.getMetrics();
+    if (metrics && previewBlock.width) {
+      const containerWidth = containerElement.clientWidth || 220;
+      const containerHeight = containerElement.clientHeight || 90;
+      const blockX = (containerWidth - previewBlock.width) / 2;
+      const blockY = Math.max(5, (containerHeight - previewBlock.height) / 2);
+      previewBlock.moveBy(blockX, blockY);
+    }
+    
+    // 清理：在组件卸载时需要销毁工作区
+    return () => {
+      tempWorkspace.dispose();
+    };
+  };
+
+  // 当积木库对话框打开时，渲染所有积木的预览
+  useEffect(() => {
+    if (blockLibraryOpen && blockLibraryList.length > 0) {
+      // 延迟执行，确保 DOM 已经渲染
+      setTimeout(() => {
+        Object.entries(blockPreviewRefs.current).forEach(([blockId, container]) => {
+          if (container) {
+            const block = blockLibraryList.find(b => b.id === blockId);
+            if (block) {
+              renderBlockPreview(block, container);
+            }
+          }
+        });
+      }, 100);
+    }
+  }, [blockLibraryOpen, blockLibraryList]);
+
+  // 清理预览工作区
+  useEffect(() => {
+    return () => {
+      // 组件卸载时清理所有预览容器
+      Object.values(blockPreviewRefs.current).forEach(container => {
+        if (container && container.innerHTML) {
+          container.innerHTML = '';
+        }
+      });
+      blockPreviewRefs.current = {};
+    };
+  }, []);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -1222,7 +1451,7 @@ function AppContent() {
                 </Box>
               ) : (
                 <List>
-                  {blockLibraryList.map((block) => (
+                  {blockLibraryList.map((block, index) => (
                     <ListItem
                       key={block.id}
                       onClick={() => {
@@ -1234,9 +1463,40 @@ function AppContent() {
                         cursor: 'pointer',
                         '&:hover': {
                           bgcolor: 'action.hover'
-                        }
+                        },
+                        alignItems: 'flex-start',
+                        py: 2
                       }}
                     >
+                      {/* 左侧积木预览容器 */}
+                      <Box
+                        ref={(el) => {
+                          if (el) {
+                            blockPreviewRefs.current[block.id] = el;
+                          }
+                        }}
+                        sx={{
+                          width: 220,
+                          height: 90,
+                          minWidth: 220,
+                          minHeight: 90,
+                          bgcolor: 'background.default',
+                          borderRadius: 2,
+                          border: '2px solid',
+                          borderColor: 'divider',
+                          overflow: 'hidden',
+                          flexShrink: 0,
+                          mr: 2,
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            borderColor: 'primary.main',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+                          }
+                        }}
+                      />
+                      
+                      {/* 右侧文本信息 */}
                       <ListItemText
                         primaryTypographyProps={{ component: 'div' }}
                         secondaryTypographyProps={{ component: 'div' }}
@@ -1255,20 +1515,67 @@ function AppContent() {
                           </Box>
                         }
                       />
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          showConfirm('确认删除', `确定要删除积木 "${block.opcode}" 吗？`, () => {
-                            deleteBlock(block.id);
-                            // 更新列表状态
-                            setBlockLibraryList(prev => prev.filter(b => b.id !== block.id));
-                          });
-                        }}
-                        sx={{ color: 'error.main' }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        {/* 向上移动按钮 */}
+                        <Tooltip title="向上移动" arrow>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => handleMoveBlockUp(e, index)}
+                            disabled={index === 0}
+                            sx={{
+                              color: 'text.secondary',
+                              '&:hover': {
+                                bgcolor: 'action.hover',
+                                color: 'primary.main',
+                              },
+                              '&:disabled': {
+                                opacity: 0.3,
+                              }
+                            }}
+                          >
+                            <ArrowUpwardIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        {/* 向下移动按钮 */}
+                        <Tooltip title="向下移动" arrow>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => handleMoveBlockDown(e, index)}
+                            disabled={index === blockLibraryList.length - 1}
+                            sx={{
+                              color: 'text.secondary',
+                              '&:hover': {
+                                bgcolor: 'action.hover',
+                                color: 'primary.main',
+                              },
+                              '&:disabled': {
+                                opacity: 0.3,
+                              }
+                            }}
+                          >
+                            <ArrowDownwardIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        {/* 删除按钮 */}
+                        <Tooltip title="删除积木" arrow>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              showConfirm('确认删除', `确定要删除积木 "${block.opcode}" 吗？`, () => {
+                                deleteBlock(block.id);
+                                // 更新列表状态
+                                setBlockLibraryList(prev => prev.filter(b => b.id !== block.id));
+                                // 清理预览引用
+                                delete blockPreviewRefs.current[block.id];
+                              });
+                            }}
+                            sx={{ color: 'error.main' }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     </ListItem>
                   ))}
                 </List>
