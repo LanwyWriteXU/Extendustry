@@ -61,7 +61,7 @@ function App() {
       // 注册自定义积木类型
       registerCustomBlock();
 
-      // 创建预览工作区（无 Toolbox，使用 Zelos 渲染器）
+      // 创建预览工作区
       const workspace = Blockly.inject(previewRef.current, {
         renderer: 'zelos',
         theme: Blockly.Themes.Classic,
@@ -193,7 +193,7 @@ function App() {
         this.setInputsInline(true);
         
         // 根据积木类型设置属性
-        if (blockType === 'COMMAND') {
+        if (blockType === 'COMMAND' || blockType === 'LOOP' || blockType === 'CONDITIONAL') {
           this.setPreviousStatement(true, null);
           this.setNextStatement(true, null);
         } else if (blockType === 'REPORTER') {
@@ -510,9 +510,7 @@ function App() {
                 </Box>
               )}
               {blockType === 'LOOP' && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                  固定 1 个分支
-                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}></Typography>
               )}
             </Paper>
           </Stack>
