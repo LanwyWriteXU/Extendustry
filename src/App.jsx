@@ -511,8 +511,9 @@ function AppContent() {
 
   // 验证元素ID：检查是否包含非法字符
   const validateElementName = (elementName) => {
-    // 只允许字母、数字、下划线，不允许其他特殊符号
-    const regex = /^[a-zA-Z0-9_]+$/;
+    // 必须以字母或下划线开头，后续可以包含字母、数字或下划线
+    // 这是 Blockly 积木元素 ID 的要求
+    const regex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
     return regex.test(elementName);
   };
 

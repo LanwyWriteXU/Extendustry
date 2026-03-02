@@ -53,6 +53,10 @@ function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplic
         <TextField
           size="small"
           value={element.name}
+          onChange={(e) => {
+            // 实时更新显示的值
+            onUpdate(index, { name: e.target.value });
+          }}
           onBlur={(e) => {
             const newName = e.target.value;
             // 标签类型的ID可以为空，其他类型必须非空
@@ -70,8 +74,7 @@ function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplic
               // 显示错误提示，不更新数据
               return;
             }
-            // 验证通过，更新数据
-            onUpdate(index, { name: newName });
+            // 验证通过，数据已在 onChange 中更新
           }}
           sx={{ flex: 1 }}
           variant="outlined"
