@@ -16,6 +16,7 @@ import {
   getCurrentBlockId,
   clearAllData,
   downloadAsFile,
+  downloadBlockAsFile,
   uploadFromFile
 } from './utils/storage';
 import { 
@@ -1051,12 +1052,18 @@ function AppContent() {
               sx={{
                 height: 32,
                 width: 32,
+                mr: 1,
+              }}
+            />
+            <Box
+              component="img"
+              src="/title.svg"
+              alt="Extendustry"
+              sx={{
+                height: 40,
                 mr: 2,
               }}
             />
-            <Typography variant="h5" component="div" sx={{ fontWeight: 600, mr: 2 }}>
-              Extendustry
-            </Typography>
             <Button
               onClick={(e) => setFileMenuAnchor(e.currentTarget)}
               sx={{
@@ -1109,7 +1116,16 @@ function AppContent() {
                 从电脑中打开
               </MenuItem>
               <MenuItem onClick={() => { downloadAsFile(); setFileMenuAnchor(null); }}>
-                导出为扩展文件
+                导出所有积木
+              </MenuItem>
+              <MenuItem onClick={() => { 
+                if (currentBlock) {
+                  downloadBlockAsFile(currentBlock);
+                  showSuccess('积木 JSON 已导出');
+                }
+                setFileMenuAnchor(null);
+              }}>
+                导出当前积木 JSON
               </MenuItem>
             </Menu>
             <Stack direction="row" spacing={1} sx={{ ml: 'auto' }}>

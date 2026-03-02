@@ -162,6 +162,56 @@ export const downloadAsFile = (filename = 'blocks-config.json') => {
   }
 };
 
+// 导出单个积木为 JSON
+export const exportBlockAsJson = (block) => {
+  try {
+    const data = {
+      version: '1.0',
+      exportDate: new Date().toISOString(),
+      block: {
+        id: block.id,
+        opcode: block.opcode,
+        type: block.type,
+        branchCount: block.branchCount,
+        elements: block.elements,
+        functions: block.functions || [],
+        createdAt: block.createdAt,
+        updatedAt: block.updatedAt
+      }
+    };
+    return JSON.stringify(data, null, 2);
+  } catch (error) {
+    console.error('Failed to export block:', error);
+    return null;
+  }
+};
+
+// 下载单个积木为文件
+export const downloadBlockAsFile = (block, filename) => {
+  try {
+    const data = exportBlockAsJson(block);
+    if (!data) return false;
+    
+    const defaultFilename = `${block.opcode || 'block'}-${block.id}.json`;
+    const finalFilename = filename || defaultFilename;
+    
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = finalFilename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to download block file:', error);
+    return false;
+  }
+};
+
 // 从文件上传
 export const uploadFromFile = (file) => {
   return new Promise((resolve, reject) => {
