@@ -10,6 +10,7 @@ import {
   Button
 } from '@mui/material';
 import { forwardRef } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Alert = forwardRef(function Alert(props, ref) {
   return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
@@ -26,6 +27,7 @@ export const useAlert = () => {
 };
 
 export const AlertProvider = ({ children }) => {
+  const { t } = useLanguage();
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -140,7 +142,7 @@ export const AlertProvider = ({ children }) => {
             }}
             color="inherit"
           >
-            取消
+            {t('buttons.cancel')}
           </Button>
           <Button
             onClick={() => {
@@ -151,7 +153,7 @@ export const AlertProvider = ({ children }) => {
             color="primary"
             autoFocus
           >
-            确定
+            {t('buttons.confirm')}
           </Button>
         </DialogActions>
       </Dialog>

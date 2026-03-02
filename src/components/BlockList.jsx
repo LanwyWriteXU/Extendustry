@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAlert } from './Alert';
+import { useLanguage } from '../contexts/LanguageContext';
 import {
   Box,
   Typography,
@@ -32,6 +33,7 @@ import {
 
 function BlockList({ onSelectBlock, onCreateNew }) {
   const { showWarning, showConfirm } = useAlert();
+  const { t } = useLanguage();
   const [blocks, setBlocks] = useState([]);
   const [open, setOpen] = useState(false);
   const [editBlock, setEditBlock] = useState(null);
@@ -61,7 +63,7 @@ function BlockList({ onSelectBlock, onCreateNew }) {
   // 删除积木
   const handleDeleteBlock = (e, block) => {
     e.stopPropagation();
-    showConfirm('确认删除', `确定要删除积木 "${block.name}" 吗？`, () => {
+    showConfirm(t('dialogs.deleteConfirm'), t('blockLibrary.deleteConfirm', { name: block.name }), () => {
       deleteBlock(block.id);
       loadBlocks();
     });
@@ -216,7 +218,7 @@ function BlockList({ onSelectBlock, onCreateNew }) {
                         </Typography>
                         {block.functions && block.functions.length > 0 && (
                           <Chip
-                            label={`${block.functions.length} 个函数`}
+                            label={`${block.functions.length} ${t('functionConfig.parameters')}`}
                             size="small"
                             sx={{ height: 18, fontSize: 10 }}
                           />

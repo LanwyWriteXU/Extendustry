@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { 
   Card, 
   CardContent, 
@@ -15,17 +16,18 @@ import ExpandMore from '@mui/icons-material/ExpandMore';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplicate, validateElementName }) {
+  const { t } = useLanguage();
   const [expandedIndex, setExpandedIndex] = useState(null);
 
   const getTypeLabel = (type) => {
     const labels = {
-      'label': '标签',
-      'text': '文本',
-      'number': '数字',
-      'dropdown': '下拉菜单',
-      'colour': '颜色',
-      'boolean': '布尔值',
-      'statement': '分支'
+      'label': t('elementTypes.label'),
+      'text': t('elementTypes.text'),
+      'number': t('elementTypes.number'),
+      'dropdown': t('elementTypes.dropdown'),
+      'colour': t('elementTypes.colour'),
+      'boolean': t('elementTypes.boolean'),
+      'statement': t('elementTypes.statement')
     };
     return labels[type] || type;
   };
@@ -49,7 +51,7 @@ function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplic
     // ID字段（标签类型的ID可以为空）
     fields.push(
       <Box key="id" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-        <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>ID:</Typography>
+        <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>{t('elements.id')}:</Typography>
         <TextField
           size="small"
           value={element.name}
@@ -85,11 +87,11 @@ function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplic
           }
           helperText={
             element.type !== 'label' && (!element.name || element.name.trim() === '')
-              ? 'ID不能为空'
+              ? t('validation.idRequired')
               : element.name && element.name.trim() !== '' && validateElementName && !validateElementName(element.name)
-              ? 'ID只能包含字母、数字和下划线'
+              ? t('validation.idInvalid')
               : element.name && element.name.trim() !== '' && isElementNameDuplicate && isElementNameDuplicate(element.name, element.id)
-              ? 'ID已存在，请使用不同的名称'
+              ? t('validation.idDuplicate')
               : ''
           }
         />
@@ -100,7 +102,7 @@ function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplic
     if (element.type === 'label') {
       fields.push(
         <Box key="text" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-          <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>文本:</Typography>
+          <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>{t('elements.text')}:</Typography>
           <TextField
             size="small"
             value={element.text || ''}
@@ -116,7 +118,7 @@ function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplic
     } else if (element.type === 'text') {
       fields.push(
         <Box key="defaultValue" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-          <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>默认值:</Typography>
+          <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>{t('elements.defaultValue')}:</Typography>
           <TextField
             size="small"
             value={element.defaultValue || ''}
@@ -129,7 +131,7 @@ function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplic
     } else if (element.type === 'number') {
       fields.push(
         <Box key="defaultValue" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-          <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>默认值:</Typography>
+          <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>{t('elements.defaultValue')}:</Typography>
           <TextField
             size="small"
             type="number"
@@ -146,7 +148,7 @@ function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplic
     } else if (element.type === 'colour') {
       fields.push(
         <Box key="defaultValue" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-          <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>默认值:</Typography>
+          <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>{t('elements.defaultValue')}:</Typography>
           <input
             type="color"
             value={element.defaultValue}
@@ -165,7 +167,7 @@ function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplic
     } else if (element.type === 'dropdown') {
       fields.push(
         <Box key="defaultValue" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-          <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>默认值:</Typography>
+          <Typography variant="caption" sx={{ minWidth: 40, color: 'text.secondary' }}>{t('elements.defaultValue')}:</Typography>
           <TextField
             size="small"
             value={element.defaultValue}
@@ -177,7 +179,7 @@ function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplic
       );
       fields.push(
         <Box key="options" sx={{ mt: 1 }}>
-          <Typography variant="caption" sx={{ display: 'block', mb: 1, color: 'text.secondary' }}>选项:</Typography>
+          <Typography variant="caption" sx={{ display: 'block', mb: 1, color: 'text.secondary' }}>{t('elements.options')}:</Typography>
           <TextareaAutosize
             minRows={3}
             value={element.options ? element.options.map(o => o.join(',')).join('\n') : ''}
@@ -189,7 +191,7 @@ function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplic
               });
               onUpdate(index, { options: newOptions });
             }}
-            placeholder="每行一个选项，格式：显示值,值"
+            placeholder={t('elements.optionsPlaceholder')}
             style={{
               width: '100%',
               fontFamily: 'monospace',
@@ -240,10 +242,10 @@ function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplic
             color: 'text.secondary'
           }}>
             <Typography variant="h6" gutterBottom>
-              暂无元素
+              {t('elements.noElements')}
             </Typography>
             <Typography variant="body2">
-              点击右上角按钮添加元素
+              {t('elements.addElement')}
             </Typography>
           </Box>
         ) : (

@@ -4,8 +4,10 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Tooltip from '@mui/material/Tooltip';
 import AddIcon from '@mui/icons-material/Add';
+import { useLanguage } from '../contexts/LanguageContext';
 
 function AddElementMenu({ onAddLabel, onAddTextInput, onAddNumberInput, onAddDropdown, onAddColourPicker, onAddBooleanInput }) {
+  const { t } = useLanguage();
   const [anchorEl, setAnchorEl] = React.useState(null);
   const open = Boolean(anchorEl);
 
@@ -43,7 +45,7 @@ function AddElementMenu({ onAddLabel, onAddTextInput, onAddNumberInput, onAddDro
 
   return (
     <div>
-      <Tooltip title="添加元素" arrow>
+      <Tooltip title={t('elements.addElement')} arrow>
         <Button
           variant="contained"
           onClick={handleClick}
@@ -100,22 +102,22 @@ function AddElementMenu({ onAddLabel, onAddTextInput, onAddNumberInput, onAddDro
         }}
       >
         <MenuItem onClick={() => handleAdd('label')} sx={{ py: 2 }}>
-          <span>标签</span>
+          <span>{t('elementTypes.label')}</span>
         </MenuItem>
         <MenuItem onClick={() => handleAdd('text')} sx={{ py: 2 }}>
-          <span>文本</span>
+          <span>{t('elementTypes.text')}</span>
         </MenuItem>
         <MenuItem onClick={() => handleAdd('number')} sx={{ py: 2 }}>
-          <span>数字</span>
+          <span>{t('elementTypes.number')}</span>
         </MenuItem>
         <MenuItem onClick={() => handleAdd('dropdown')} sx={{ py: 2 }}>
-          <span>下拉菜单</span>
+          <span>{t('elementTypes.dropdown')}</span>
         </MenuItem>
         <MenuItem onClick={() => handleAdd('colour')} sx={{ py: 2 }}>
-          <span>颜色</span>
+          <span>{t('elementTypes.colour')}</span>
         </MenuItem>
         <MenuItem onClick={() => handleAdd('boolean')} sx={{ py: 2 }}>
-          <span>布尔值</span>
+          <span>{t('elementTypes.boolean')}</span>
         </MenuItem>
       </Menu>
     </div>

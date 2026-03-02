@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import Cookies from 'js-cookie';
 import Blockly from 'blockly';
 import BlocklyJS from 'blockly/javascript';
 import './App.css';
@@ -51,6 +53,7 @@ import {
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
+import LanguageIcon from '@mui/icons-material/Language';
 import SaveIcon from '@mui/icons-material/Save';
 import UploadIcon from '@mui/icons-material/Upload';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -69,6 +72,7 @@ import 'blockly/blocks';
 import 'blockly/javascript';
 
 function AppContent() {
+  const { t, language, setLanguage, supportedLanguages } = useLanguage();
   const previewRef = useRef(null);
   const previewRef2 = useRef(null); // 用于第二个界面的预览
   const workspaceRef = useRef(null);
@@ -82,12 +86,20 @@ function AppContent() {
     functions: []
   });
   const elementCounter = useRef(1);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+  try {
+    return Cookies.get('dark-mode') === 'true';
+  } catch (e) {
+    console.error('Failed to read dark mode from Cookie:', e);
+    return false;
+  }
+});
   const [activeTab, setActiveTab] = useState(0);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [blockLibraryOpen, setBlockLibraryOpen] = useState(false);
   const [blockLibraryList, setBlockLibraryList] = useState([]);
   const [fileMenuAnchor, setFileMenuAnchor] = useState(null);
+  const [languageMenuAnchor, setLanguageMenuAnchor] = useState(null);
 
   // 创建主题
   const theme = createTheme({
@@ -712,7 +724,7 @@ function AppContent() {
   // 保存当前积木样式
   const saveBlockStyle = () => {
     saveCurrentBlock();
-    showSuccess('积木已保存！');
+    showSuccess(t('messages.blockSaved'));
   };
 
   // 创建新积木
@@ -720,8 +732,8 @@ function AppContent() {
     // 检查是否有未保存的更改
     if (hasUnsavedChanges) {
       showConfirm(
-        '未保存的更改',
-        '当前积木有未保存的更改，确定要创建新积木吗？未保存的更改将丢失。',
+        t('messages.unsavedChanges'),
+        t('messages.unsavedChangesConfirm'),
         () => {
           // 确认创建
           const newBlock = {
@@ -771,8 +783,8 @@ function AppContent() {
     // 检查是否有未保存的更改
     if (hasUnsavedChanges) {
       showConfirm(
-        '未保存的更改',
-        '当前积木有未保存的更改，确定要切换吗？未保存的更改将丢失。',
+        t('messages.unsavedChanges'),
+        t('messages.unsavedChangesConfirm'),
         () => {
           // 确认切换
           setCurrentBlock(block);
@@ -1057,7 +1069,7 @@ function AppContent() {
             />
             <Box
               component="img"
-              src="/title.svg"
+              src={language === 'en-US' ? '/title-en.svg' : '/title.svg'}
               alt="Extendustry"
               sx={{
                 height: 40,
@@ -1076,7 +1088,7 @@ function AppContent() {
               }}
               color="inherit"
             >
-              文件
+              {t('menu.file')}
             </Button>
             <Menu
               anchorEl={fileMenuAnchor}
@@ -1109,27 +1121,107 @@ function AppContent() {
                 },
               }}
             >
-              <MenuItem onClick={() => { saveCurrentBlock(); showSuccess('扩展项目已保存'); setFileMenuAnchor(null); }}>
-                保存扩展项目
+              <MenuItem onClick={() => { saveCurrentBlock(); showSuccess(t('messages.projectSaved')); setFileMenuAnchor(null); }}>
+                {t('menu.saveProject')}
               </MenuItem>
               <MenuItem onClick={() => { setUploadDialogOpen(true); setFileMenuAnchor(null); }}>
-                从电脑中打开
+                {t('menu.openFromComputer')}
               </MenuItem>
               <MenuItem onClick={() => { downloadAsFile(); setFileMenuAnchor(null); }}>
-                导出所有积木
+                {t('menu.exportAllBlocks')}
               </MenuItem>
               <MenuItem onClick={() => { 
                 if (currentBlock) {
                   downloadBlockAsFile(currentBlock);
-                  showSuccess('积木 JSON 已导出');
+                  showSuccess(t('messages.blockExported'));
                 }
                 setFileMenuAnchor(null);
               }}>
-                导出当前积木 JSON
+                {t('menu.exportCurrentBlock')}
               </MenuItem>
             </Menu>
             <Stack direction="row" spacing={1} sx={{ ml: 'auto' }}>
-              <IconButton onClick={() => setDarkMode(!darkMode)} color="inherit">
+              <Tooltip title={t('buttons.language')} arrow>
+                <IconButton 
+                  onClick={(e) => setLanguageMenuAnchor(e.currentTarget)}
+                  color="inherit"
+                  sx={{ position: 'relative' }}
+                >
+                  <LanguageIcon />
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      position: 'absolute',
+                      bottom: 2,
+                      right: 2,
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    {supportedLanguages[language]?.flag}
+                  </Typography>
+                </IconButton>
+              </Tooltip>
+              <Menu
+                anchorEl={languageMenuAnchor}
+                open={Boolean(languageMenuAnchor)}
+                onClose={() => setLanguageMenuAnchor(null)}
+                TransitionComponent={Fade}
+                TransitionProps={{
+                  timeout: {
+                    enter: 300,
+                    exit: 200,
+                  },
+                }}
+                disableScrollLock
+                disableAutoFocusItem
+                PaperProps={{
+                  sx: {
+                    mt: 1,
+                    borderRadius: 1,
+                    overflow: 'visible',
+                  },
+                }}
+                MenuListProps={{
+                  disablePadding: true,
+                  sx: {
+                    '& .MuiMenuItem-root': {
+                      borderRadius: 0,
+                      py: 1.5,
+                      px: 2,
+                    },
+                  },
+                }}
+              >
+                {Object.entries(supportedLanguages).map(([langCode, langInfo]) => (
+                  <MenuItem 
+                    key={langCode}
+                    onClick={() => {
+                      setLanguage(langCode);
+                      setLanguageMenuAnchor(null);
+                    }}
+                    selected={language === langCode}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body2" sx={{ fontSize: '1.2em' }}>
+                        {langInfo.flag}
+                      </Typography>
+                      <Typography variant="body2">
+                        {langInfo.name}
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Menu>
+              <IconButton onClick={() => {
+  const newMode = !darkMode;
+  setDarkMode(newMode);
+  try {
+    Cookies.set('dark-mode', newMode.toString(), { expires: 365 });
+  } catch (e) {
+    console.error('Failed to save dark mode to Cookie:', e);
+  }
+}} color="inherit">
                 {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
               </IconButton>
             </Stack>
@@ -1144,8 +1236,8 @@ function AppContent() {
             onChange={(e, newValue) => setActiveTab(newValue)}
             sx={{ px: 2 }}
           >
-            <Tab label="积木设计" />
-            <Tab label="函数配置" />
+            <Tab label={t('toolbar.blockConfig')} />
+            <Tab label={t('toolbar.functionConfig')} />
           </Tabs>
         </Paper>
 
@@ -1162,7 +1254,7 @@ function AppContent() {
                 bgcolor: 'background.paper',
                 position: 'relative'
               }}>
-                <Tooltip title="积木库" arrow>
+                <Tooltip title={t('toolbar.blockLibrary')} arrow>
                   <IconButton
                     onClick={() => setBlockLibraryOpen(true)}
                     sx={{
@@ -1180,10 +1272,10 @@ function AppContent() {
                   </IconButton>
                 </Tooltip>
                 <Typography variant="h6" gutterBottom color="text.primary">
-                  积木预览
+                  {t('toolbar.blockPreview')}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  使用右侧工具栏添加积木元素
+                  {t('messages.addElementTip')}
                 </Typography>
                 <div ref={previewRef} className="blockly-preview"></div>
               </Paper>
@@ -1195,11 +1287,11 @@ function AppContent() {
                 bgcolor: 'background.paper'
               }}>
                 <Typography variant="h6" gutterBottom color="text.primary">
-                  积木配置
+                  {t('toolbar.blockConfig')}
                 </Typography>
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    操作码 (opcode)
+                    {t('blockConfig.opcode')}
                   </Typography>
                   <TextField
                     value={currentBlock.opcode}
@@ -1213,23 +1305,23 @@ function AppContent() {
                       const opcode = e.target.value;
                       // 验证操作码是否为空
                       if (!opcode || opcode.trim() === '') {
-                        showError('操作码不能为空');
+                        showError(t('validation.idRequired'));
                         return;
                       }
                       // 验证操作码格式
                       if (!validateOpcode(opcode)) {
-                        showError('操作码只能包含字母、数字和下划线，不能包含特殊符号');
+                        showError(t('validation.idInvalid'));
                         return;
                       }
                       // 验证操作码是否重复
                       if (isOpcodeDuplicate(opcode)) {
-                        showError('操作码已存在，请使用不同的名称');
+                        showError(t('validation.idDuplicate'));
                         return;
                       }
                     }}
                     fullWidth
                     size="small"
-                    placeholder="例如: my_custom_block"
+                    placeholder={t('blockConfig.opcodePlaceholder')}
                     error={
                       !currentBlock.opcode || currentBlock.opcode.trim() === '' ||
                       (currentBlock.opcode && !validateOpcode(currentBlock.opcode)) ||
@@ -1248,7 +1340,7 @@ function AppContent() {
                 </Box>
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    积木类型
+                    {t('blockConfig.blockType')}
                   </Typography>
                   <Select
                     value={currentBlock.type}
@@ -1260,19 +1352,19 @@ function AppContent() {
                     fullWidth
                     size="small"
                   >
-                    <MenuItem value="COMMAND">COMMAND</MenuItem>
-                    <MenuItem value="REPORTER">REPORTER</MenuItem>
-                    <MenuItem value="BOOLEAN">BOOLEAN</MenuItem>
-                    <MenuItem value="EVENT">EVENT</MenuItem>
-                    <MenuItem value="HAT">HAT</MenuItem>
-                    <MenuItem value="LOOP">LOOP</MenuItem>
-                    <MenuItem value="CONDITIONAL">CONDITIONAL</MenuItem>
+                    <MenuItem value="COMMAND">{t('blockConfig.types.COMMAND')}</MenuItem>
+                    <MenuItem value="REPORTER">{t('blockConfig.types.REPORTER')}</MenuItem>
+                    <MenuItem value="BOOLEAN">{t('blockConfig.types.BOOLEAN')}</MenuItem>
+                    <MenuItem value="EVENT">{t('blockConfig.types.EVENT')}</MenuItem>
+                    <MenuItem value="HAT">{t('blockConfig.types.HAT')}</MenuItem>
+                    <MenuItem value="LOOP">{t('blockConfig.types.LOOP')}</MenuItem>
+                    <MenuItem value="CONDITIONAL">{t('blockConfig.types.CONDITIONAL')}</MenuItem>
                   </Select>
                 </Box>
                 {currentBlock.type === 'CONDITIONAL' && (
                   <Box sx={{ mt: 2 }}>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
-                      分支数量
+                      {t('blockConfig.branchCount')}
                     </Typography>
                     <TextField
                       type="number"
@@ -1311,7 +1403,7 @@ function AppContent() {
                             borderColor: 'divider'
                           }}>
                             <Typography variant="h6" color="text.primary">
-                              元素列表
+                              {t('elements.elementList')}
                             </Typography>
                             <Stack direction="row" spacing={2}>
                               <AddElementMenu
@@ -1322,7 +1414,7 @@ function AppContent() {
                                 onAddColourPicker={addColourPicker}
                                 onAddBooleanInput={addBooleanInput}
                               />
-                              <Tooltip title="保存积木" arrow>
+                              <Tooltip title={t('buttons.save')} arrow>
                                 <Button
                                   variant="contained"
                                   onClick={() => { saveCurrentBlock(); saveBlockStyle(); }}
@@ -1341,7 +1433,7 @@ function AppContent() {
                                   <SaveIcon />
                                 </Button>
                               </Tooltip>
-                              <Tooltip title="清空全部" arrow>
+                              <Tooltip title={t('buttons.clearAll')} arrow>
                                 <Button
                                   variant="outlined"
                                   onClick={clearWorkspace}
@@ -1395,7 +1487,7 @@ function AppContent() {
                 bgcolor: 'background.paper',
                 position: 'relative'
               }}>
-                <Tooltip title="积木库" arrow>
+                <Tooltip title={t('toolbar.blockLibrary')} arrow>
                   <IconButton
                     onClick={() => setBlockLibraryOpen(true)}
                     sx={{
@@ -1413,10 +1505,10 @@ function AppContent() {
                   </IconButton>
                 </Tooltip>
                 <Typography variant="h6" gutterBottom color="text.primary">
-                  积木预览
+                  {t('toolbar.blockPreview')}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  当前积木的实时预览
+                  {t('toolbar.blockPreview')} - {t('messages.realtimePreview')}
                 </Typography>
                 <div ref={previewRef2} className="blockly-preview"></div>
               </Paper>
@@ -1428,12 +1520,12 @@ function AppContent() {
                 bgcolor: 'background.paper'
               }}>
                 <Typography variant="h6" gutterBottom color="text.primary">
-                  积木信息
+                  {t('blockConfig.blockInfo')}
                 </Typography>
                 <Stack spacing={2} sx={{ mt: 2 }}>
                   <Box>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
-                      积木类型
+                      {t('blockConfig.blockType')}
                     </Typography>
                     <Typography variant="body1" color="text.primary" sx={{ fontWeight: 500 }}>
                       {currentBlock.type}
@@ -1441,7 +1533,7 @@ function AppContent() {
                   </Box>
                   <Box>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
-                      元素数量
+                      {t('blockConfig.elementCount')}
                     </Typography>
                     <Typography variant="body1" color="text.primary" sx={{ fontWeight: 500 }}>
                       {currentBlock.elements.length}
@@ -1476,7 +1568,7 @@ function AppContent() {
 
       {/* 文件上传对话框 */}
       <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)}>
-        <DialogTitle>导入配置</DialogTitle>
+        <DialogTitle>{t('dialogs.importConfig')}</DialogTitle>
         <DialogContent>
           <input
             type="file"
@@ -1486,7 +1578,7 @@ function AppContent() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setUploadDialogOpen(false)}>取消</Button>
+          <Button onClick={() => setUploadDialogOpen(false)}>{t('buttons.cancel')}</Button>
         </DialogActions>
       </Dialog>
 
@@ -1501,7 +1593,7 @@ function AppContent() {
         disablePortal={false}
       >
         <DialogTitle sx={{ position: 'relative' }}>
-          积木库
+          {t('blockLibrary.title')}
           <IconButton
             onClick={handleCloseBlockLibrary}
             sx={{
@@ -1525,13 +1617,13 @@ function AppContent() {
               }}
               sx={{ alignSelf: 'flex-start' }}
             >
-              创建新积木
+              {t('blockLibrary.createNew')}
             </Button>
             <Paper elevation={0} sx={{ bgcolor: 'background.default', maxHeight: 400, overflowY: 'auto' }}>
               {blockLibraryList.length === 0 ? (
                 <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
                   <Typography variant="body2">
-                    积木库为空，点击上方按钮创建新积木
+                    {t('blockLibrary.noBlocks')}
                   </Typography>
                 </Box>
               ) : (
@@ -1595,14 +1687,14 @@ function AppContent() {
                         secondary={
                           <Box sx={{ mt: 0.5 }}>
                             <Typography variant="caption" color="text.secondary">
-                              类型: {block.type} | 元素: {block.elements.length} | 函数: {block.functions?.length || 0}
+                              {t('blockLibrary.type')}: {block.type} | {t('blockLibrary.elements')}: {block.elements.length} | {t('blockLibrary.functions')}: {block.functions?.length || 0}
                             </Typography>
                           </Box>
                         }
                       />
                       <Box sx={{ display: 'flex', gap: 0.5 }}>
                         {/* 向上移动按钮 */}
-                        <Tooltip title="向上移动" arrow>
+                        <Tooltip title={t('blockLibrary.moveUp')} arrow>
                           <IconButton
                             size="small"
                             onClick={(e) => handleMoveBlockUp(e, index)}
@@ -1622,7 +1714,7 @@ function AppContent() {
                           </IconButton>
                         </Tooltip>
                         {/* 向下移动按钮 */}
-                        <Tooltip title="向下移动" arrow>
+                        <Tooltip title={t('blockLibrary.moveDown')} arrow>
                           <IconButton
                             size="small"
                             onClick={(e) => handleMoveBlockDown(e, index)}
@@ -1642,12 +1734,12 @@ function AppContent() {
                           </IconButton>
                         </Tooltip>
                         {/* 删除按钮 */}
-                        <Tooltip title="删除积木" arrow>
+                        <Tooltip title={t('buttons.delete')} arrow>
                           <IconButton
                             size="small"
                             onClick={(e) => {
                               e.stopPropagation();
-                              showConfirm('确认删除', `确定要删除积木 "${block.opcode}" 吗？`, () => {
+                              showConfirm(t('dialogs.deleteConfirm'), t('blockLibrary.deleteConfirm', { name: block.opcode }), () => {
                                 deleteBlock(block.id);
                                 // 更新列表状态
                                 setBlockLibraryList(prev => prev.filter(b => b.id !== block.id));
@@ -1677,9 +1769,11 @@ function AppContent() {
 // 主App组件，包含AlertProvider
 function App() {
   return (
-    <AlertProvider>
-      <AppContent />
-    </AlertProvider>
+    <LanguageProvider>
+      <AlertProvider>
+        <AppContent />
+      </AlertProvider>
+    </LanguageProvider>
   );
 }
 
