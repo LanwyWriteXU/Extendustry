@@ -1450,6 +1450,7 @@ function AppContent() {
                 blockType={currentBlock.type}
                 blockOpcode={currentBlock.opcode}
                 onSave={handleFunctionsSave}
+                darkMode={darkMode}
               />
             </Paper>
           </Stack>

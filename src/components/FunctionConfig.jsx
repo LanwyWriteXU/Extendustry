@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAlert } from './Alert';
+import Editor from '@monaco-editor/react';
 import {
   Box,
   Typography,
@@ -23,7 +24,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import CodeIcon from '@mui/icons-material/Code';
 
-function FunctionConfig({ blockElements, blockType, blockOpcode, onSave }) {
+function FunctionConfig({ blockElements, blockType, blockOpcode, onSave, darkMode }) {
   const { showWarning } = useAlert();
   const [currentFunction, setCurrentFunction] = useState({
     id: null,
@@ -51,7 +52,7 @@ function FunctionConfig({ blockElements, blockType, blockOpcode, onSave }) {
 
   // 生成默认函数代码
   const generateDefaultCode = (funcName, returnType, params) => {
-    const paramList = params.map(p => `${p.type} ${p.name}`).join(', ');
+    const paramList = params.map(p => `${p.name}`).join(', ');
     
     let code = `// ${funcName}\n`;
     code += `// 参数说明：\n`;
@@ -312,30 +313,32 @@ function FunctionConfig({ blockElements, blockType, blockOpcode, onSave }) {
             </Accordion>
 
             {/* 代码编辑器 */}
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 300 }}>
               <Typography variant="body2" gutterBottom color="text.secondary">
                 函数代码
               </Typography>
-              <TextField
-                multiline
-                fullWidth
-                value={currentFunction.code}
-                onChange={(e) => handleCodeChange(e.target.value)}
-                rows={10}
-                sx={{
-                  flex: 1,
-                  '& .MuiInputBase-root': {
-                    fontFamily: 'monospace',
-                    fontSize: '13px',
-                    lineHeight: 1.6,
-                  },
-                  '& .MuiOutlinedInput-root': {
-                    height: '100%',
-                    alignItems: 'flex-start',
-                  },
-                }}
-                placeholder="// 在这里编写你的函数代码..."
-              />
+              <Box sx={{ flex: 1, border: '1px solid #e0e0e0', borderRadius: 1, overflow: 'hidden', borderColor: darkMode ? '#333' : '#e0e0e0' }}>
+                <Editor
+                  height="100%"
+                  defaultLanguage="javascript"
+                  value={currentFunction.code}
+                  onChange={(value) => handleCodeChange(value || '')}
+                  theme={darkMode ? 'vs-dark' : 'vs-light'}
+                  options={{
+                    minimap: { enabled: true },
+                    fontSize: 13,
+                    lineNumbers: 'on',
+                    roundedSelection: false,
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    tabSize: 2,
+                    wordWrap: 'on',
+                    formatOnPaste: true,
+                    formatOnType: true,
+                    suggestOnTriggerCharacters: true,
+                  }}
+                />
+              </Box>
             </Box>
 
             {/* 保存按钮 */}
