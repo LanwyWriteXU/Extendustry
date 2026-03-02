@@ -104,7 +104,7 @@ function FunctionConfig({ blockElements, blockType, blockOpcode, functions, onSa
       code += `  const ${constName} = ${p.name};\n`;
     });
     
-    code += `  // TODO: 在这里实现你的逻辑\n`;
+    code += `  ${t('functionConfig.todoImplementLogic', { defaultValue: '// TODO: Implement your logic here' })}\n`;
     
     if (params.length > 0) {
       const constNames = params.map(p => `input_${p.constName || p.name}`);

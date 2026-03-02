@@ -77,14 +77,14 @@ function AppContent() {
   const previewRef2 = useRef(null); // 用于第二个界面的预览
   const workspaceRef = useRef(null);
   const workspaceRef2 = useRef(null); // 用于第二个界面
-  const [currentBlock, setCurrentBlock] = useState({
+  const [currentBlock, setCurrentBlock] = useState(() => ({
     id: null,
     opcode: 'my_custom_block',
     type: 'COMMAND',
     branchCount: 2,
-    elements: [{ id: 1, type: 'label', text: '默认积木文本' }],
+    elements: [{ id: 1, type: 'label', text: 'Default Block Text' }],
     functions: []
-  });
+  }));
   const elementCounter = useRef(1);
   const [darkMode, setDarkMode] = useState(() => {
   try {
@@ -679,7 +679,7 @@ function AppContent() {
     showConfirm('确认清空', '确定要清空当前积木的所有元素吗？', () => {
       const newBlock = {
         ...currentBlock,
-        elements: [{ id: 1, type: 'label', text: '默认积木文本' }]
+        elements: [{ id: 1, type: 'label', text: t('blockConfig.defaultBlockText', { defaultValue: 'Default Block Text' }) }]
       };
       setCurrentBlock(newBlock);
       checkUnsavedChanges(newBlock);
@@ -741,7 +741,7 @@ function AppContent() {
             opcode: 'my_custom_block_' + Date.now(),
             type: 'COMMAND',
             branchCount: 2,
-            elements: [{ id: 1, type: 'label', text: '默认积木文本' }],
+            elements: [{ id: 1, type: 'label', text: t('blockConfig.defaultBlockText', { defaultValue: 'Default Block Text' }) }],
             functions: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -764,7 +764,7 @@ function AppContent() {
         opcode: 'my_custom_block_' + Date.now(),
         type: 'COMMAND',
         branchCount: 2,
-        elements: [{ id: 1, type: 'label', text: '默认积木文本' }],
+        elements: [{ id: 1, type: 'label', text: t('blockConfig.defaultBlockText', { defaultValue: 'Default Block Text' }) }],
         functions: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -1069,7 +1069,7 @@ function AppContent() {
             />
             <Box
               component="img"
-              src={language === 'en-US' ? '/title-en.svg' : '/title.svg'}
+              src={language === 'en-US' ? './title-en.svg' : './title.svg'}
               alt="Extendustry"
               sx={{
                 height: 40,

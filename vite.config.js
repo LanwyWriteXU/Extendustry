@@ -11,11 +11,26 @@ export default defineConfig({
   build: {
     outDir: 'online',
     assetsDir: 'assets',
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 500,
     rollupOptions: {
       output: {
-        manualChunks: undefined,
+        manualChunks: {
+          // React 核心库
+          'react-vendor': ['react', 'react-dom'],
+          // Material-UI 库
+          'mui-vendor': ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
+          // Blockly 编辑器
+          'blockly-vendor': ['blockly', 'blockly/javascript'],
+          // Monaco 编辑器
+          'monaco-vendor': ['@monaco-editor/react'],
+          // 拖拽库
+          'dnd-vendor': ['@hello-pangea/dnd'],
+          // 工具库
+          'utils-vendor': ['js-cookie'],
+        },
       },
     },
+    // 启用 CSS 代码分割
+    cssCodeSplit: true,
   },
 });

@@ -45,6 +45,7 @@ export default {
     save: '保存积木样式',
     blockInfo: '积木信息',
     elementCount: '元素数量',
+    defaultBlockText: '默认积木文本',
     types: {
       COMMAND: '命令积木',
       REPORTER: '报告积木',
@@ -99,6 +100,7 @@ export default {
     saveFunction: '保存函数',
     pleaseEnterName: '请输入函数名称',
     from: '来自',
+    todoImplementLogic: '// TODO: 在这里实现你的逻辑',
     returnTypes: {
       void: 'void',
       any: 'any',
