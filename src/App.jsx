@@ -1449,6 +1449,7 @@ function AppContent() {
                 blockElements={currentBlock.elements}
                 blockType={currentBlock.type}
                 blockOpcode={currentBlock.opcode}
+                functions={currentBlock.functions}
                 onSave={handleFunctionsSave}
                 darkMode={darkMode}
               />
