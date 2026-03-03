@@ -8,10 +8,23 @@ export default {
   menu: {
     file: 'File',
     saveProject: 'Save Extension Project',
+    saveAs: 'Save As',
     openFromComputer: 'Open from Computer',
     exportAllBlocks: 'Export All Blocks',
     exportCurrentBlock: 'Export Current Block JSON',
     clearAllData: 'Clear All Data',
+    newExtension: 'New Extension',
+    exportExtension: 'Export Extension',
+    projectSettings: 'Project Settings',
+  },
+
+// Project Settings
+  projectSettings: {
+    title: 'Project Settings',
+    extensionName: 'Extension Name',
+    extensionId: 'Extension ID',
+    extensionAuthor: 'Author',
+    extensionDescription: 'Description',
   },
   
   // Toolbar
@@ -122,6 +135,10 @@ export default {
     realtimePreview: 'Real-time preview of current block',
     importSuccess: 'Import successful!',
     importFailed: 'Import failed:',
+    newExtensionConfirm: 'Are you sure you want to create a new extension? This will clear all blocks in the block library. This action cannot be undone.',
+    newExtensionSuccess: 'New extension created, block library cleared',
+    extensionExported: 'Extension exported',
+    noBlocksToExport: 'No blocks to export, please create blocks first',
   },
   
   // Buttons

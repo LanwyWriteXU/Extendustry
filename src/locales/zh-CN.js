@@ -8,10 +8,23 @@ export default {
   menu: {
     file: '文件',
     saveProject: '保存扩展项目',
+    saveAs: '另存为',
     openFromComputer: '从电脑中打开',
     exportAllBlocks: '导出所有积木',
     exportCurrentBlock: '导出当前积木 JSON',
     clearAllData: '清空所有数据',
+    newExtension: '新建扩展',
+    exportExtension: '导出扩展',
+    projectSettings: '项目设定',
+  },
+
+// 项目设定
+  projectSettings: {
+    title: '项目设定',
+    extensionName: '扩展名称',
+    extensionId: '扩展ID',
+    extensionAuthor: '作者',
+    extensionDescription: '描述',
   },
   
   // 工具栏
@@ -53,7 +66,7 @@ export default {
       EVENT: '事件积木',
       HAT: '帽子积木',
       LOOP: '循环积木',
-      CONDITIONAL: '条件积木',
+      CONDITIONAL: '分支积木',
     },
   },
   
@@ -122,6 +135,10 @@ export default {
     realtimePreview: '当前积木的实时预览',
     importSuccess: '导入成功！',
     importFailed: '导入失败：',
+    newExtensionConfirm: '确定要新建扩展吗？这将清空积木库中的所有积木，此操作不可恢复。',
+    newExtensionSuccess: '已新建扩展，积木库已清空',
+    extensionExported: '扩展已导出',
+    noBlocksToExport: '没有积木可以导出，请先创建积木',
   },
   
 // 按钮

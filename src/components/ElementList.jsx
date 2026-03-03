@@ -8,11 +8,14 @@ import {
   Box, 
   TextField, 
   TextareaAutosize,
-  Collapse
+  Collapse,
+  Button
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DragHandleIcon from '@mui/icons-material/DragHandle';
 import ExpandMore from '@mui/icons-material/ExpandMore';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplicate, validateElementName }) {
@@ -177,31 +180,116 @@ function ElementList({ elements, onUpdate, onMove, onRemove, isElementNameDuplic
           />
         </Box>
       );
+      // 下拉列表选项编辑器
+      const options = element.options || [];
       fields.push(
         <Box key="options" sx={{ mt: 1 }}>
-          <Typography variant="caption" sx={{ display: 'block', mb: 1, color: 'text.secondary' }}>{t('elements.options')}:</Typography>
-          <TextareaAutosize
-            minRows={3}
-            value={element.options ? element.options.map(o => o.join(',')).join('\n') : ''}
-            onChange={(e) => {
-              const lines = e.target.value.split('\n').filter(l => l.trim());
-              const newOptions = lines.map(line => {
-                const parts = line.split(',');
-                return parts.length >= 2 ? [parts[0].trim(), parts[1].trim()] : [line.trim(), line.trim()];
-              });
-              onUpdate(index, { options: newOptions });
-            }}
-            placeholder={t('elements.optionsPlaceholder')}
-            style={{
-              width: '100%',
-              fontFamily: 'monospace',
-              fontSize: '13px',
-              padding: '8px',
-              border: '1px solid #e0e0e0',
-              borderRadius: '8px',
-              resize: 'vertical',
-            }}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('elements.options')}:</Typography>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                const newOptions = [...options, ['新选项', 'new_option']];
+                onUpdate(index, { options: newOptions });
+              }}
+              sx={{ fontSize: '11px', py: 0.5, px: 1 }}
+            >
+              + 添加选项
+            </Button>
+          </Box>
+          <Box sx={{ maxHeight: 200, overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: 1 }}>
+            {options.map((option, optIndex) => (
+              <Box
+                key={optIndex}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  p: 1,
+                  borderBottom: optIndex < options.length - 1 ? '1px solid #e0e0e0' : 'none',
+                  '&:hover': { backgroundColor: 'action.hover' }
+                }}
+              >
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    if (optIndex > 0) {
+                      const newOptions = [...options];
+                      [newOptions[optIndex - 1], newOptions[optIndex]] = [newOptions[optIndex], newOptions[optIndex - 1]];
+                      onUpdate(index, { options: newOptions });
+                    }
+                  }}
+                  disabled={optIndex === 0}
+                  sx={{ p: 0.5, minWidth: 24 }}
+                >
+                  <ArrowUpwardIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    if (optIndex < options.length - 1) {
+                      const newOptions = [...options];
+                      [newOptions[optIndex], newOptions[optIndex + 1]] = [newOptions[optIndex + 1], newOptions[optIndex]];
+                      onUpdate(index, { options: newOptions });
+                    }
+                  }}
+                  disabled={optIndex === options.length - 1}
+                  sx={{ p: 0.5, minWidth: 24 }}
+                >
+                  <ArrowDownwardIcon fontSize="small" />
+                </IconButton>
+                <TextField
+                  size="small"
+                  placeholder="显示文本"
+                  value={option[0] || ''}
+                  onChange={(e) => {
+                    const newOptions = [...options];
+                    newOptions[optIndex] = [e.target.value, option[1]];
+                    onUpdate(index, { options: newOptions });
+                  }}
+                  sx={{ flex: 1 }}
+                  variant="outlined"
+                />
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>→</Typography>
+                <TextField
+                  size="small"
+                  placeholder="值"
+                  value={option[1] || ''}
+                  onChange={(e) => {
+                    const newOptions = [...options];
+                    newOptions[optIndex] = [option[0], e.target.value];
+                    onUpdate(index, { options: newOptions });
+                  }}
+                  sx={{ flex: 1 }}
+                  variant="outlined"
+                />
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    const newOptions = options.filter((_, i) => i !== optIndex);
+                    // 如果删除的是默认值，更新默认值
+                    let newDefaultValue = element.defaultValue;
+                    if (element.defaultValue === option[1] && newOptions.length > 0) {
+                      newDefaultValue = newOptions[0][1];
+                    }
+                    onUpdate(index, { 
+                      options: newOptions,
+                      defaultValue: newDefaultValue
+                    });
+                  }}
+                  sx={{ p: 0.5, minWidth: 24, color: 'error.main' }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            ))}
+            {options.length === 0 && (
+              <Box sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
+                <Typography variant="caption">暂无选项，点击上方按钮添加</Typography>
+              </Box>
+            )}
+          </Box>
         </Box>
       );
     }

@@ -56,8 +56,12 @@ function FunctionConfig({ blockElements, blockType, blockOpcode, functions, onSa
       // 检查参数是否发生变化
       const paramsChanged = JSON.stringify(savedFunction.parameters) !== JSON.stringify(currentParams);
       
-      if (paramsChanged) {
-        // 参数变化，智能更新函数代码
+      // 检查函数名是否需要更新
+      const funcName = blockOpcode || 'customFunction';
+      const nameChanged = savedFunction.name !== funcName;
+      
+      if (paramsChanged || nameChanged) {
+        // 参数或函数名变化，智能更新函数代码
         const updatedCode = updateFunctionWithNewParams(
           savedFunction.code,
           savedFunction.parameters,
@@ -66,7 +70,8 @@ function FunctionConfig({ blockElements, blockType, blockOpcode, functions, onSa
         
         setCurrentFunction({
           ...savedFunction,
-          code: updatedCode,
+          name: funcName, // 更新函数名
+          code: nameChanged ? updateFunctionName(updatedCode, savedFunction.name, funcName) : updatedCode,
           parameters: currentParams
         });
       } else if (!initializedRef.current) {
@@ -94,31 +99,50 @@ function FunctionConfig({ blockElements, blockType, blockOpcode, functions, onSa
 
   // 生成默认函数代码
   const generateDefaultCode = (funcName, returnType, params) => {
-    const paramList = params.map(p => `${p.name}`).join(', ');
+    // 生成方法定义（不使用 function 关键字）
+    let code = `${funcName}(arg) {\n`;
     
-    let code = `function ${funcName}(${paramList}) {\n`;
-    
-    // 为每个参数生成 const 声明，使用 input_ 前缀
+    // 为每个参数生成 const 声明，从 arg 中提取
     params.forEach(p => {
-      const constName = `input_${p.constName || p.name}`;
-      code += `  const ${constName} = ${p.name};\n`;
+      code += `  const ${p.name} = arg.${p.name};\n`;
     });
     
     code += `  ${t('functionConfig.todoImplementLogic', { defaultValue: '// TODO: Implement your logic here' })}\n`;
     
     if (params.length > 0) {
-      const constNames = params.map(p => `input_${p.constName || p.name}`);
-      code += `  console.log(${constNames.join(', ')});\n`;
+      const paramNames = params.map(p => p.name);
+      code += `  console.log(${paramNames.join(', ')});\n`;
     }
     
-    code += `}\n`;
+    code += `}`;
     
     return code;
   };
 
+  // 更新函数名
+  const updateFunctionName = (code, oldName, newName) => {
+    // 替换方法定义中的函数名
+    const lines = code.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      // 匹配方法定义行：oldName(arg) 或 function oldName(arg)
+      const methodMatch = lines[i].match(/^(\s*)(?:function\s+)?(\w+)\s*\(/);
+      if (methodMatch) {
+        const [, indent, currentName] = methodMatch;
+        if (currentName === oldName) {
+          lines[i] = lines[i].replace(
+            /(?:function\s+)?\w+\s*\(/,
+            `${newName}(`
+          );
+          break;
+        }
+      }
+    }
+    return lines.join('\n');
+  };
+
   // 智能更新函数代码，添加新的参数定义而不改变其他代码
   const updateFunctionWithNewParams = (currentCode, oldParams, newParams) => {
-    // 找到函数定义行
+    // 找到方法定义行
     const lines = currentCode.split('\n');
     let functionStartLine = -1;
     let functionEndLine = -1;
@@ -128,8 +152,8 @@ function FunctionConfig({ blockElements, blockType, blockOpcode, functions, onSa
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       
-      // 查找 function 定义
-      if (functionStart === -1 && line.match(/^\s*function\s+\w+\s*\(/)) {
+      // 查找方法定义（不使用 function 关键字）
+      if (functionStart === -1 && line.match(/^\s*\w+\s*\(/)) {
         functionStart = i;
         functionStartLine = i;
       }
@@ -146,31 +170,29 @@ function FunctionConfig({ blockElements, blockType, blockOpcode, functions, onSa
     }
 
     if (functionStartLine === -1 || functionEndLine === -1) {
-      // 无法解析函数，返回原代码
+      // 无法解析方法，返回原代码
       return currentCode;
     }
 
-    // 提取函数签名
-    const functionLine = lines[functionStartLine];
-    const functionMatch = functionLine.match(/function\s+(\w+)\s*\(([^)]*)\)/);
-    
-    if (!functionMatch) {
+    // 提取方法名
+    const methodMatch = lines[functionStartLine].match(/^(\s*)(\w+)\s*\(([^)]*)\)/);
+    if (!methodMatch) {
       return currentCode;
     }
-
-    const funcName = functionMatch[1];
-    const paramList = newParams.map(p => `${p.name}`).join(', ');
     
-    // 构建新的函数签名
-    lines[functionStartLine] = `function ${funcName}(${paramList}) {`;
+    const indent = methodMatch[1];
+    const methodName = methodMatch[2];
+    
+    // 构建新的方法签名，统一使用 arg 参数
+    lines[functionStartLine] = `${indent}${methodName}(arg) {`;
 
-    // 找到 const input_ 定义的结束位置
+    // 找到 const 定义行的结束位置
     let lastConstLine = functionStartLine;
-    const constLines = {}; // 记录 const 行：constName（不带前缀）-> lineIndex
+    const constLines = {}; // 记录 const 行：paramName -> lineIndex
     for (let i = functionStartLine + 1; i <= functionEndLine; i++) {
       const line = lines[i];
-      // 检查是否是 const input_ 行
-      const match = line.match(/^\s*const\s+input_(\w+)\s*=/);
+      // 检查是否是 const 行（新格式：const xxx = arg.xxx;）
+      const match = line.match(/^\s*const\s+(\w+)\s*=\s*arg\.\w+\s*;/);
       if (match) {
         constLines[match[1]] = i;
         lastConstLine = i;
@@ -195,13 +217,12 @@ function FunctionConfig({ blockElements, blockType, blockOpcode, functions, onSa
         // 参数被删除
         toDelete.push(elementId);
       } else {
-        // 参数存在，检查是否需要更新赋值
+        // 参数存在，检查是否需要更新
         const newParam = newParamMap.get(elementId);
         if (newParam.name !== param.name) {
-          // 参数名变化，需要更新赋值，但保持 constName 不变
+          // 参数名变化，需要更新
           toUpdate.push({ 
             elementId, 
-            constName: param.constName || param.name,
             oldName: param.name, 
             newName: newParam.name 
           });
@@ -219,26 +240,26 @@ function FunctionConfig({ blockElements, blockType, blockOpcode, functions, onSa
 
     // 删除旧的 const 定义（从后往前删除，避免索引变化）
     toDelete.sort((a, b) => {
-      const constNameA = oldParamMap.get(a)?.constName || oldParamMap.get(a)?.name;
-      const constNameB = oldParamMap.get(b)?.constName || oldParamMap.get(b)?.name;
-      return (constLines[constNameB] || -1) - (constLines[constNameA] || -1);
+      const nameA = oldParamMap.get(a)?.name;
+      const nameB = oldParamMap.get(b)?.name;
+      return (constLines[nameB] || -1) - (constLines[nameA] || -1);
     });
     toDelete.forEach(elementId => {
       const oldParam = oldParamMap.get(elementId);
-      const constName = oldParam?.constName || oldParam?.name;
-      if (constLines[constName] !== undefined) {
-        lines.splice(constLines[constName], 1);
+      const paramName = oldParam?.name;
+      if (constLines[paramName] !== undefined) {
+        lines.splice(constLines[paramName], 1);
       }
     });
 
-    // 更新现有 const 的赋值
-    toUpdate.forEach(({ constName, oldName, newName }) => {
-      const lineIndex = constLines[constName];
+    // 更新现有 const 的定义
+    toUpdate.forEach(({ oldName, newName }) => {
+      const lineIndex = constLines[oldName];
       if (lineIndex !== undefined) {
-        // 更新赋值：const input_xxx = oldName; -> const input_xxx = newName;
+        // 更新定义：const oldName = arg.oldName; -> const newName = arg.newName;
         lines[lineIndex] = lines[lineIndex].replace(
-          /=\s*\w+\s*;/,
-          `= ${newName};`
+          /const\s+\w+\s*=\s*arg\.\w+\s*;/,
+          `const ${newName} = arg.${newName};`
         );
       }
     });
@@ -246,8 +267,7 @@ function FunctionConfig({ blockElements, blockType, blockOpcode, functions, onSa
     // 添加新的 const 定义
     const newConstLines = [];
     toAdd.forEach(p => {
-      const constName = `input_${p.constName || p.name}`;
-      newConstLines.push(`  const ${constName} = ${p.name};`);
+      newConstLines.push(`  const ${p.name} = arg.${p.name};`);
     });
 
     // 在 const 定义区域后添加新的 const 定义
@@ -256,7 +276,7 @@ function FunctionConfig({ blockElements, blockType, blockOpcode, functions, onSa
       let actualLastConstLine = functionStartLine;
       for (let i = functionStartLine + 1; i < lines.length; i++) {
         const line = lines[i];
-        const match = line.match(/^\s*const\s+input_\w+\s*=/);
+        const match = line.match(/^\s*const\s+\w+\s*=\s*arg\.\w+\s*;/);
         if (match) {
           actualLastConstLine = i;
         } else if (line.trim() && !line.match(/^\s*\/\//)) {

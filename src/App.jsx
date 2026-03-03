@@ -19,7 +19,8 @@ import {
   clearAllData,
   downloadAsFile,
   downloadBlockAsFile,
-  uploadFromFile
+  uploadFromFile,
+  downloadExtensionFile
 } from './utils/storage';
 import { 
   Box, 
@@ -100,6 +101,9 @@ function AppContent() {
   const [blockLibraryList, setBlockLibraryList] = useState([]);
   const [fileMenuAnchor, setFileMenuAnchor] = useState(null);
   const [languageMenuAnchor, setLanguageMenuAnchor] = useState(null);
+  const [projectSettingsOpen, setProjectSettingsOpen] = useState(false);
+  const [extensionName, setExtensionName] = useState('MyExtension');
+  const [projectFileHandle, setProjectFileHandle] = useState(null); // 保存当前打开的文件句柄
 
   // 创建主题
   const theme = createTheme({
@@ -123,6 +127,23 @@ function AppContent() {
 
   // 保存的积木副本，用于检测未保存的更改
   const [savedBlockSnapshot, setSavedBlockSnapshot] = useState(null);
+
+  // 防止页面意外刷新
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      // 如果有未保存的更改或没有文件句柄，显示提醒
+      if (hasUnsavedChanges || !projectFileHandle) {
+        e.preventDefault();
+        e.returnValue = ''; // Chrome 需要设置 returnValue
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges, projectFileHandle]);
 
   // 防抖定时器
   const updateDebounceRef = useRef(null);
@@ -230,33 +251,31 @@ function AppContent() {
 
   
 
-  // 加载当前积木
+  // 初始化：创建新扩展
   useEffect(() => {
-    const currentBlockId = getCurrentBlockId();
-    if (currentBlockId) {
-      const block = getBlock(currentBlockId);
-      if (block) {
-        setCurrentBlock(block);
-        // 更新元素计数器
-        if (block.elements && block.elements.length > 0) {
-          const maxId = Math.max(...block.elements.map(e => e.id));
-          elementCounter.current = maxId + 1;
-        }
-        // 设置初始快照
-        setSavedBlockSnapshot(JSON.parse(JSON.stringify(block)));
-        setHasUnsavedChanges(false);
-      }
-    }
-  }, []);
+    // 创建一个新的默认积木
+    const newBlock = {
+      id: Date.now().toString(),
+      opcode: 'my_custom_block_' + Date.now(),
+      type: 'COMMAND',
+      branchCount: 2,
+      elements: [{ id: 1, type: 'label', text: t('blockConfig.defaultBlockText', { defaultValue: 'Default Block Text' }) }],
+      functions: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    // 更新状态
+    setCurrentBlock(newBlock);
+    setBlockLibraryList([newBlock]);
+    elementCounter.current = 1;
+    setSavedBlockSnapshot(JSON.parse(JSON.stringify(newBlock)));
+    setHasUnsavedChanges(false);
+  }, []); // 只在组件挂载时执行一次
 
-  // 当积木库对话框打开时加载积木列表
-  useEffect(() => {
-    if (blockLibraryOpen) {
-      setBlockLibraryList(getAllBlocks());
-    }
-  }, [blockLibraryOpen]);
+  // 当积木库对话框打开时，不需要从 localStorage 加载
 
-  // 保存当前积木
+  // 保存当前积木（保存到内存中的 blockLibraryList）
   const saveCurrentBlock = () => {
     const blockToSave = {
       ...currentBlock,
@@ -264,8 +283,21 @@ function AppContent() {
       updatedAt: new Date().toISOString(),
       createdAt: currentBlock.createdAt || new Date().toISOString()
     };
-    saveBlock(blockToSave);
-    saveCurrentBlockId(blockToSave.id);
+    
+    // 更新或添加到 blockLibraryList
+    setBlockLibraryList(prev => {
+      const existingIndex = prev.findIndex(b => b.id === blockToSave.id);
+      if (existingIndex >= 0) {
+        // 更新现有积木
+        const newList = [...prev];
+        newList[existingIndex] = blockToSave;
+        return newList;
+      } else {
+        // 添加新积木
+        return [...prev, blockToSave];
+      }
+    });
+    
     // 更新当前积木状态，确保后续修改保存到正确的积木
     if (currentBlock.id !== blockToSave.id) {
       setCurrentBlock(blockToSave);
@@ -273,6 +305,107 @@ function AppContent() {
     // 更新保存快照
     setSavedBlockSnapshot(JSON.parse(JSON.stringify(blockToSave)));
     setHasUnsavedChanges(false);
+  };
+
+  // 保存项目到文件
+  const saveProjectToFile = async (forceSaveAs = false) => {
+    try {
+      // 收集当前所有积木（从内存中的 blockLibraryList）
+      const allBlocks = blockLibraryList.length > 0 ? blockLibraryList : [currentBlock].filter(b => b);
+      
+      const projectData = {
+        version: '1.0',
+        extensionName: extensionName,
+        blocks: allBlocks,
+        savedAt: new Date().toISOString()
+      };
+
+      let fileHandle = projectFileHandle;
+
+      // 如果强制另存为或没有打开的文件，显示另存为对话框
+      if (forceSaveAs || !fileHandle) {
+        fileHandle = await window.showSaveFilePicker({
+          suggestedName: `${extensionName || 'MyExtension'}.ext`,
+          types: [{
+            description: 'Extension Project File',
+            accept: { 'application/vnd.extendustry': ['.ext'] }
+          }]
+        });
+        setProjectFileHandle(fileHandle);
+      }
+
+      // 写入文件
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(projectData, null, 2));
+      await writable.close();
+
+      showSuccess(t('messages.projectSaved'));
+      setFileMenuAnchor(null);
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('Failed to save project:', error);
+        showError('保存项目失败: ' + error.message);
+      }
+    }
+  };
+
+  // 另存为
+  const saveProjectAs = () => {
+    saveProjectToFile(true);
+  };
+
+  // 从文件读取项目
+  const openProjectFromFile = async () => {
+    try {
+      const [fileHandle] = await window.showOpenFilePicker({
+        types: [{
+          description: 'Extension Project File',
+          accept: { 'application/vnd.extendustry': ['.ext'] }
+        }],
+        multiple: false
+      });
+
+      const file = await fileHandle.getFile();
+      const text = await file.text();
+      const projectData = JSON.parse(text);
+
+      // 验证项目数据
+      if (!projectData.blocks || !Array.isArray(projectData.blocks)) {
+        throw new Error('无效的项目文件格式');
+      }
+
+      // 设置扩展名称
+      if (projectData.extensionName) {
+        setExtensionName(projectData.extensionName);
+      }
+
+      // 保存文件句柄
+      setProjectFileHandle(fileHandle);
+
+      // 设置积木库列表
+      setBlockLibraryList(projectData.blocks);
+
+      // 加载第一个积木
+      if (projectData.blocks.length > 0) {
+        const firstBlock = projectData.blocks[0];
+        setCurrentBlock(firstBlock);
+        if (firstBlock.elements && firstBlock.elements.length > 0) {
+          const maxId = Math.max(...firstBlock.elements.map(e => e.id));
+          elementCounter.current = maxId + 1;
+        }
+        setSavedBlockSnapshot(JSON.parse(JSON.stringify(firstBlock)));
+        setHasUnsavedChanges(false);
+      }
+
+      showSuccess('项目加载成功！');
+      setUploadDialogOpen(false);
+      setFileMenuAnchor(null);
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('Failed to open project:', error);
+        showError('打开项目失败: ' + error.message);
+      }
+    }
   };
 
   // 禁用右键菜单
@@ -358,7 +491,7 @@ function AppContent() {
         this.setInputsInline(true);
         
         // 根据积木类型设置属性
-        if (currentBlock.type === 'COMMAND' || currentBlock.type === 'LOOP' || currentBlock.type === 'CONDITIONAL') {
+        if (currentBlock.type === 'COMMAND' || currentBlock.type === 'CONDITIONAL') {
           this.setPreviousStatement(true, null);
           this.setNextStatement(true, null);
         } else if (currentBlock.type === 'REPORTER') {
@@ -367,6 +500,8 @@ function AppContent() {
           this.setOutput(true, 'Boolean');
         } else if (currentBlock.type === 'EVENT' || currentBlock.type === 'HAT') {
           this.setNextStatement(true, null);
+        } else if (currentBlock.type === 'LOOP') {
+          this.setPreviousStatement(true, null);
         }
         
         // 遍历每个组，创建对应的 Input
@@ -440,6 +575,10 @@ function AppContent() {
           // 固定一个分支
           this.appendStatementInput('BRANCH_0')
             .setCheck(null);
+          // 添加图标
+          this.appendEndRowInput()
+              .setAlign(Blockly.ALIGN_RIGHT)
+              .appendField(new Blockly.FieldImage("./repeat.svg", 20, 20, { alt: "*", flipRtl: "FALSE" }));
         }
         
         this.setColour(230);
@@ -713,6 +852,87 @@ function AppContent() {
     }
   };
 
+  // 新建扩展 - 清空积木库
+  const handleNewExtension = () => {
+    showConfirm(
+      t('messages.newExtensionConfirm'),
+      t('messages.newExtensionConfirm'),
+      () => {
+        // 清除文件句柄
+        setProjectFileHandle(null);
+        
+        // 清空积木库列表
+        setBlockLibraryList([]);
+        
+        // 创建一个新的默认积木
+        const newBlock = {
+          id: Date.now().toString(),
+          opcode: 'my_custom_block_' + Date.now(),
+          type: 'COMMAND',
+          branchCount: 2,
+          elements: [{ id: 1, type: 'label', text: t('blockConfig.defaultBlockText', { defaultValue: 'Default Block Text' }) }],
+          functions: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        // 更新状态
+        setCurrentBlock(newBlock);
+        setBlockLibraryList([newBlock]);
+        elementCounter.current = 1;
+        setSavedBlockSnapshot(JSON.parse(JSON.stringify(newBlock)));
+        setHasUnsavedChanges(false);
+        
+        // 清理预览引用
+        blockPreviewRefs.current = {};
+        
+        // 关闭菜单
+        setFileMenuAnchor(null);
+        
+        showSuccess(t('messages.newExtensionSuccess'));
+      },
+      () => {
+        // 取消操作
+        setFileMenuAnchor(null);
+      }
+    );
+  };
+
+  // 导出扩展
+  const handleExportExtension = () => {
+    // 从内存中的 blockLibraryList 获取积木
+    const allBlocks = blockLibraryList.length > 0 ? blockLibraryList : [currentBlock].filter(b => b);
+    
+    if (allBlocks.length === 0) {
+      showError(t('messages.noBlocksToExport'));
+      setFileMenuAnchor(null);
+      return;
+    }
+    
+    // 生成扩展ID（从扩展名称转换）
+    const extensionId = extensionName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '_')
+      .replace(/^_+|_+$/g, '') || 'my_extension';
+    
+    // 使用当前项目配置导出扩展
+    const success = downloadExtensionFile(
+      allBlocks,
+      extensionName || 'MyExtension',
+      extensionId,
+      'Unknown',
+      'Custom Extension'
+    );
+    
+    if (success) {
+      showSuccess(t('messages.extensionExported'));
+    } else {
+      showError('导出失败');
+    }
+    
+    setFileMenuAnchor(null);
+  };
+
   // 处理函数保存
   const handleFunctionsSave = (functions) => {
     setCurrentBlock({
@@ -747,7 +967,7 @@ function AppContent() {
             updatedAt: new Date().toISOString()
           };
           setCurrentBlock(newBlock);
-          saveCurrentBlockId(newBlock.id);
+          setBlockLibraryList(prev => [...prev, newBlock]);
           elementCounter.current = 1;
           setSavedBlockSnapshot(JSON.parse(JSON.stringify(newBlock)));
           setHasUnsavedChanges(false);
@@ -770,7 +990,7 @@ function AppContent() {
         updatedAt: new Date().toISOString()
       };
       setCurrentBlock(newBlock);
-      saveCurrentBlockId(newBlock.id);
+      setBlockLibraryList(prev => [...prev, newBlock]);
       elementCounter.current = 1;
       setSavedBlockSnapshot(JSON.parse(JSON.stringify(newBlock)));
       setHasUnsavedChanges(false);
@@ -788,7 +1008,6 @@ function AppContent() {
         () => {
           // 确认切换
           setCurrentBlock(block);
-          saveCurrentBlockId(block.id);
           if (block.elements && block.elements.length > 0) {
             const maxId = Math.max(...block.elements.map(e => e.id));
             elementCounter.current = maxId + 1;
@@ -804,7 +1023,6 @@ function AppContent() {
     } else {
       // 没有未保存的更改，直接切换
       setCurrentBlock(block);
-      saveCurrentBlockId(block.id);
       if (block.elements && block.elements.length > 0) {
         const maxId = Math.max(...block.elements.map(e => e.id));
         elementCounter.current = maxId + 1;
@@ -1121,26 +1339,59 @@ function AppContent() {
                 },
               }}
             >
-              <MenuItem onClick={() => { saveCurrentBlock(); showSuccess(t('messages.projectSaved')); setFileMenuAnchor(null); }}>
+              <MenuItem onClick={() => { saveProjectToFile(); }}>
                 {t('menu.saveProject')}
               </MenuItem>
-              <MenuItem onClick={() => { setUploadDialogOpen(true); setFileMenuAnchor(null); }}>
+              <MenuItem onClick={() => { saveProjectAs(); }}>
+                {t('menu.saveAs')}
+              </MenuItem>
+              <MenuItem onClick={() => { handleNewExtension(); }}>
+                {t('menu.newExtension')}
+              </MenuItem>
+              <MenuItem onClick={() => { openProjectFromFile(); }}>
                 {t('menu.openFromComputer')}
               </MenuItem>
-              <MenuItem onClick={() => { downloadAsFile(); setFileMenuAnchor(null); }}>
-                {t('menu.exportAllBlocks')}
-              </MenuItem>
-              <MenuItem onClick={() => { 
-                if (currentBlock) {
-                  downloadBlockAsFile(currentBlock);
-                  showSuccess(t('messages.blockExported'));
-                }
-                setFileMenuAnchor(null);
-              }}>
-                {t('menu.exportCurrentBlock')}
+              <MenuItem onClick={() => { handleExportExtension(); }}>
+                {t('menu.exportExtension')}
               </MenuItem>
             </Menu>
-            <Stack direction="row" spacing={1} sx={{ ml: 'auto' }}>
+            <Button
+              onClick={() => setProjectSettingsOpen(true)}
+              sx={{
+                height: '100%',
+                borderRadius: 0,
+                textTransform: 'none',
+                fontWeight: 500,
+                px: 2,
+              }}
+              color="inherit"
+            >
+              {t('menu.projectSettings')}
+            </Button>
+            <TextField
+              value={extensionName}
+              onChange={(e) => setExtensionName(e.target.value)}
+              size="small"
+              variant="outlined"
+              placeholder="NAME"
+              sx={{
+                width: 200,
+                '& .MuiOutlinedInput-root': {
+                  height: 40,
+                  '& fieldset': {
+                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                  },
+                },
+                '& .MuiOutlinedInput-input': {
+                  color: 'text.primary',
+                },
+              }}
+            />
+            <Box sx={{ flexGrow: 1 }} />
+            <Stack direction="row" spacing={1}>
               <Tooltip title={t('buttons.language')} arrow>
                 <IconButton 
                   onClick={(e) => setLanguageMenuAnchor(e.currentTarget)}
@@ -1759,6 +2010,35 @@ function AppContent() {
               )}
             </Paper>
           </Stack>
+        </DialogContent>
+      </Dialog>
+
+      {/* 项目设定模态框 */}
+      <Dialog 
+        open={projectSettingsOpen} 
+        onClose={() => setProjectSettingsOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+      >
+        <DialogTitle>
+          {t('projectSettings.title')}
+          <IconButton
+            onClick={() => setProjectSettingsOpen(false)}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: (theme) => theme.palette.grey[500],
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          {/* 项目设定的内容将在这里添加 */}
+          <Typography variant="body2" color="text.secondary">
+            项目设定功能开发中...
+          </Typography>
         </DialogContent>
       </Dialog>
     </Box>
