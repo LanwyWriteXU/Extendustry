@@ -234,10 +234,20 @@ export const uploadFromFile = (file) => {
 };
 
 // 生成 Scratch 扩展代码
-export const generateExtensionCode = (blocks, extensionName = 'MyExtension', extensionId = 'my_extension', author = 'Unknown', description = 'Custom Extension') => {
+export const generateExtensionCode = (blocks, extensionName = 'MyExtension', extensionId = 'my_extension', author = 'Unknown', description = 'Custom Extension', license = 'MIT', extensionColor1 = '#4CAF50', extensionIcon = '', blockIcon = '') => {
   if (!blocks || blocks.length === 0) {
     return null;
   }
+
+  // 辅助函数：调整颜色亮度
+  const adjustColor = (hex, amount) => {
+    const color = hex.replace('#', '');
+    const num = parseInt(color, 16);
+    const r = Math.min(255, Math.max(0, (num >> 16) + amount));
+    const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
+    const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+  };
 
 // 辅助函数：转义字符串中的特殊字符
   const escapeString = (str) => {
@@ -462,7 +472,7 @@ ${Object.entries(allMenus).map(([menuName, menuDef]) => `          ${menuName}: 
 // ID: ${escapeString(extensionId)}
 // Author: ${escapeString(author)}
 // Description: ${escapeString(description)}
-// License: MIT
+// License: ${license}
 // Made with Extendustry<https://cyberneko.cn/Extendustry>
 
 (function (Scratch) {
@@ -472,17 +482,34 @@ ${Object.entries(allMenus).map(([menuName, menuDef]) => `          ${menuName}: 
     throw new Error("${escapeString(extensionName)} extension must be run unsandboxed");
   }
 
+  // Icon constants
+  ${extensionIcon ? `const EXTENSION_ICON = '${extensionIcon}';` : ''}
+  ${blockIcon ? `const BLOCK_ICON = '${blockIcon}';` : ''}
+
   class ${extensionName.replace(/\s+/g, '')} {
     getInfo() {
-      return {
+      const info = {
         id: "${escapeString(extensionId)}",
         name: Scratch.translate("${escapeString(extensionName)}"),
-        color1: "#4CAF50",
-        color2: "#388E3C",
+        color1: "${extensionColor1}",
+        color2: "${adjustColor(extensionColor1, -20)}",
+        color3: "${adjustColor(extensionColor1, 20)}",
         blocks: [
 ${blockDefinitions}
         ]${menuDefinitions ? ',\n' + menuDefinitions : ''}
       };
+
+      // 添加扩展图标（如果有）
+      if (${extensionIcon ? 'true' : 'false'}) {
+        info.menuIconURI = EXTENSION_ICON;
+      }
+
+      // 添加积木图标（如果有）
+      if (${blockIcon ? 'true' : 'false'}) {
+        info.blockIconURI = BLOCK_ICON;
+      }
+
+      return info;
     }
 
 ${blockImplementations}
@@ -495,9 +522,9 @@ ${blockImplementations}
 };
 
 // 下载扩展文件
-export const downloadExtensionFile = (blocks, extensionName = 'MyExtension', extensionId = 'my_extension', author = 'Unknown', description = 'Custom Extension') => {
+export const downloadExtensionFile = (blocks, extensionName = 'MyExtension', extensionId = 'my_extension', author = 'Unknown', description = 'Custom Extension', license = 'MIT', extensionColor1 = '#4CAF50', extensionIcon = '', blockIcon = '') => {
   try {
-    const code = generateExtensionCode(blocks, extensionName, extensionId, author, description);
+    const code = generateExtensionCode(blocks, extensionName, extensionId, author, description, license, extensionColor1, extensionIcon, blockIcon);
     if (!code) return false;
     
     const filename = `${extensionName.replace(/\s+/g, '_')}.js`;

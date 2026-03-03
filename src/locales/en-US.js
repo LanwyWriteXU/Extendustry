@@ -24,7 +24,26 @@ export default {
     extensionName: 'Extension Name',
     extensionId: 'Extension ID',
     extensionAuthor: 'Author',
+    extensionLicense: 'License',
     extensionDescription: 'Description',
+    extensionColor: 'Extension Color',
+    extensionIcon: 'Extension Icon',
+    blockIcon: 'Block Icon',
+    uploadIcon: 'Upload Icon',
+    removeIcon: 'Remove Icon',
+    noIcon: 'No Icon',
+    extensionIconTip: 'Recommended: 48x48 PNG image, max 100KB',
+    blockIconTip: 'Recommended: 24x24 PNG image, max 100KB',
+    save: 'Save',
+    cancel: 'Cancel',
+    licenses: {
+      mit: 'MIT License',
+      apache: 'Apache 2.0',
+      gpl: 'GPL-3.0',
+      bsd: 'BSD-3-Clause',
+      mpl: 'MPL-2.0',
+      unlicense: 'Unlicense',
+    },
   },
   
   // Toolbar
@@ -125,8 +144,9 @@ export default {
   
 // Messages
   messages: {
-    blockSaved: 'Block saved!',
     projectSaved: 'Extension project saved',
+    settingsSaved: 'Project settings saved',
+    blockSaved: 'Block saved!',
     blockExported: 'Block JSON exported',
     unsavedChanges: 'Unsaved changes',
     unsavedChangesConfirm: 'Current block has unsaved changes. Create a new block? Unsaved changes will be lost.',

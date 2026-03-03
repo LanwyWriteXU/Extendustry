@@ -104,6 +104,18 @@ function AppContent() {
   const [projectSettingsOpen, setProjectSettingsOpen] = useState(false);
   const [extensionName, setExtensionName] = useState('MyExtension');
   const [projectFileHandle, setProjectFileHandle] = useState(null); // 保存当前打开的文件句柄
+  
+  // 项目设定
+  const [projectSettings, setProjectSettings] = useState({
+    extensionName: 'My Extension',
+    extensionId: 'myExtension',
+    author: 'Extendustry',
+    license: 'MIT',
+    description: '',
+    color1: '#66CCFF',
+    extensionIcon: '', // 扩展图标 DataURL
+    blockIcon: '' // 积木图标 DataURL
+  });
 
   // 创建主题
   const theme = createTheme({
@@ -129,6 +141,59 @@ function AppContent() {
 
   // 使用自定义alert
   const { showSuccess, showError, showConfirm } = useAlert();
+
+  // 辅助函数：调整颜色亮度
+  const adjustColor = (hex, amount) => {
+    const color = hex.replace('#', '');
+    const num = parseInt(color, 16);
+    const r = Math.min(255, Math.max(0, (num >> 16) + amount));
+    const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
+    const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+  };
+
+  // 验证扩展ID（只允许大小写字母）
+  const validateExtensionId = (id) => {
+    return /^[a-zA-Z]+$/.test(id);
+  };
+
+  // 处理图片上传，转换为 DataURL
+  const handleImageUpload = (event, type) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // 检查文件类型
+    if (!file.type.startsWith('image/')) {
+      showError('请选择图片文件');
+      return;
+    }
+
+    // 检查文件大小（限制为 100KB）
+    if (file.size > 100 * 1024) {
+      showError('图片大小不能超过 100KB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      if (type === 'extensionIcon') {
+        setProjectSettings({ ...projectSettings, extensionIcon: dataUrl });
+      } else if (type === 'blockIcon') {
+        setProjectSettings({ ...projectSettings, blockIcon: dataUrl });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 移除图标
+  const handleRemoveIcon = (type) => {
+    if (type === 'extensionIcon') {
+      setProjectSettings({ ...projectSettings, extensionIcon: '' });
+    } else if (type === 'blockIcon') {
+      setProjectSettings({ ...projectSettings, blockIcon: '' });
+    }
+  };
 
   // 未保存状态
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -279,6 +344,20 @@ function AppContent() {
     elementCounter.current = 1;
     setSavedBlockSnapshot(JSON.parse(JSON.stringify(newBlock)));
     setHasUnsavedChanges(false);
+    
+    // 重置项目设定
+    setProjectSettings({
+      extensionName: 'My Extension',
+      extensionId: 'myExtension',
+      author: 'Extendustry',
+      license: 'MIT',
+      description: '',
+      color1: '#66CCFF',
+      extensionIcon: '',
+      blockIcon: ''
+    });
+    setExtensionName('My Extension');
+    setProjectFileHandle(null);
   }, []); // 只在组件挂载时执行一次
 
   // 当积木库对话框打开时，不需要从 localStorage 加载
@@ -324,6 +403,7 @@ function AppContent() {
       const projectData = {
         version: '1.0',
         extensionName: extensionName,
+        extensionSettings: projectSettings,
         blocks: allBlocks,
         savedAt: new Date().toISOString()
       };
@@ -340,6 +420,20 @@ function AppContent() {
           }]
         });
         setProjectFileHandle(fileHandle);
+      } else {
+        // 如果已有文件句柄，尝试获取权限（文件可能被外部修改）
+        const permission = await fileHandle.requestPermission({ mode: 'readwrite' });
+        if (permission !== 'granted') {
+          // 如果权限被拒绝，显示另存为对话框
+          fileHandle = await window.showSaveFilePicker({
+            suggestedName: `${extensionName || 'MyExtension'}.ext`,
+            types: [{
+              description: 'Extension Project File',
+              accept: { 'application/vnd.extendustry': ['.ext'] }
+            }]
+          });
+          setProjectFileHandle(fileHandle);
+        }
       }
 
       // 写入文件
@@ -387,6 +481,11 @@ function AppContent() {
         setExtensionName(projectData.extensionName);
       }
 
+      // 设置扩展设定
+      if (projectData.extensionSettings) {
+        setProjectSettings(projectData.extensionSettings);
+      }
+
       // 保存文件句柄
       setProjectFileHandle(fileHandle);
 
@@ -429,7 +528,7 @@ function AppContent() {
   const registerCustomBlock = () => {
     Blockly.Blocks['dynamic_custom_block'] = {
       init: function() {
-        this.setColour(230);
+        this.setColour(projectSettings.color1);
         this.setTooltip('动态自定义积木');
         this.setHelpUrl('');
       }
@@ -589,7 +688,7 @@ function AppContent() {
               .appendField(new Blockly.FieldImage("./repeat.svg", 20, 20, { alt: "*", flipRtl: "FALSE" }));
         }
         
-        this.setColour(230);
+        this.setColour(projectSettings.color1);
         this.setTooltip('动态自定义积木');
         this.setHelpUrl('');
       }
@@ -891,6 +990,19 @@ function AppContent() {
         setSavedBlockSnapshot(JSON.parse(JSON.stringify(newBlock)));
         setHasUnsavedChanges(false);
         
+        // 重置项目设定
+        setProjectSettings({
+          extensionName: 'My Extension',
+          extensionId: 'myExtension',
+          author: 'Extendustry',
+          license: 'MIT',
+          description: '',
+          color1: '#66CCFF',
+          extensionIcon: '',
+          blockIcon: ''
+        });
+        setExtensionName('My Extension');
+        
         // 清理预览引用
         blockPreviewRefs.current = {};
         
@@ -921,15 +1033,19 @@ function AppContent() {
     const extensionId = extensionName
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '_')
-      .replace(/^_+|_+$/g, '') || 'my_extension';
+      .replace(/^_+|_+$/g, '') || 'myExtension';
     
     // 使用当前项目配置导出扩展
     const success = downloadExtensionFile(
       allBlocks,
-      extensionName || 'MyExtension',
-      extensionId,
-      'Unknown',
-      'Custom Extension'
+      projectSettings.extensionName || 'MyExtension',
+      projectSettings.extensionId,
+      projectSettings.author,
+      projectSettings.description,
+      projectSettings.license,
+      projectSettings.color1,
+      projectSettings.extensionIcon,
+      projectSettings.blockIcon
     );
     
     if (success) {
@@ -1220,7 +1336,7 @@ function AppContent() {
             .setCheck(null);
         }
         
-        this.setColour(230);
+        this.setColour(projectSettings.color1);
         this.setTooltip(block.opcode);
         this.setHelpUrl('');
       }
@@ -2043,11 +2159,292 @@ function AppContent() {
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          {/* 项目设定的内容将在这里添加 */}
-          <Typography variant="body2" color="text.secondary">
-            项目设定功能开发中...
-          </Typography>
+          <Stack spacing={3} sx={{ mt: 2 }}>
+            {/* 图标设置 */}
+            <Box>
+              <Stack direction="row" spacing={4}>
+                {/* 扩展图标 */}
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="body2" gutterBottom color="text.secondary">
+                    {t('projectSettings.extensionIcon')}
+                  </Typography>
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <Box
+                      sx={{
+                        width: 60,
+                        height: 60,
+                        border: '2px dashed #e0e0e0',
+                        borderRadius: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        bgcolor: 'background.default'
+                      }}
+                    >
+                      {projectSettings.extensionIcon ? (
+                        <img
+                          src={projectSettings.extensionIcon}
+                          alt="Extension Icon"
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        />
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">
+                          {t('projectSettings.noIcon')}
+                        </Typography>
+                      )}
+                    </Box>
+                    <Stack direction="column" spacing={1}>
+                      <Button
+                        variant="outlined"
+                        component="label"
+                        size="small"
+                      >
+                        {t('projectSettings.uploadIcon')}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          onChange={(e) => handleImageUpload(e, 'extensionIcon')}
+                        />
+                      </Button>
+                      {projectSettings.extensionIcon && (
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          size="small"
+                          onClick={() => handleRemoveIcon('extensionIcon')}
+                        >
+                          {t('projectSettings.removeIcon')}
+                        </Button>
+                      )}
+                    </Stack>
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                    {t('projectSettings.extensionIconTip')}
+                  </Typography>
+                </Box>
+
+                {/* 积木图标 */}
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="body2" gutterBottom color="text.secondary">
+                    {t('projectSettings.blockIcon')}
+                  </Typography>
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <Box
+                      sx={{
+                        width: 60,
+                        height: 60,
+                        border: '2px dashed #e0e0e0',
+                        borderRadius: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        bgcolor: 'background.default'
+                      }}
+                    >
+                      {projectSettings.blockIcon ? (
+                        <img
+                          src={projectSettings.blockIcon}
+                          alt="Block Icon"
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        />
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">
+                          {t('projectSettings.noIcon')}
+                        </Typography>
+                      )}
+                    </Box>
+                    <Stack direction="column" spacing={1}>
+                      <Button
+                        variant="outlined"
+                        component="label"
+                        size="small"
+                      >
+                        {t('projectSettings.uploadIcon')}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          onChange={(e) => handleImageUpload(e, 'blockIcon')}
+                        />
+                      </Button>
+                      {projectSettings.blockIcon && (
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          size="small"
+                          onClick={() => handleRemoveIcon('blockIcon')}
+                        >
+                          {t('projectSettings.removeIcon')}
+                        </Button>
+                      )}
+                    </Stack>
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                    {t('projectSettings.blockIconTip')}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Box>
+
+            {/* 扩展颜色 */}
+            <Box>
+              <Typography variant="body2" gutterBottom color="text.secondary">
+                {t('projectSettings.extensionColor')}
+              </Typography>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <input
+                  type="color"
+                  value={projectSettings.color1}
+                  onChange={(e) => setProjectSettings({ ...projectSettings, color1: e.target.value })}
+                  style={{ width: 60, height: 40, cursor: 'pointer' }}
+                />
+                <TextField
+                  value={projectSettings.color1}
+                  onChange={(e) => setProjectSettings({ ...projectSettings, color1: e.target.value })}
+                  sx={{ flex: 1 }}
+                  size="small"
+                />
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  <Box 
+                    sx={{ 
+                      width: 40, 
+                      height: 40, 
+                      backgroundColor: projectSettings.color1,
+                      borderRadius: 1,
+                      border: '2px solid #e0e0e0'
+                    }}
+                  />
+                  <Box 
+                    sx={{ 
+                      width: 40, 
+                      height: 40, 
+                      backgroundColor: adjustColor(projectSettings.color1, -20),
+                      borderRadius: 1,
+                      border: '2px solid #e0e0e0'
+                    }}
+                  />
+                  <Box 
+                    sx={{ 
+                      width: 40, 
+                      height: 40, 
+                      backgroundColor: adjustColor(projectSettings.color1, 20),
+                      borderRadius: 1,
+                      border: '2px solid #e0e0e0'
+                    }}
+                  />
+                </Box>
+              </Stack>
+            </Box>
+
+            {/* 扩展名称 */}
+            <Box>
+              <Typography variant="body2" gutterBottom color="text.secondary">
+                {t('projectSettings.extensionName')}
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                value={projectSettings.extensionName}
+                onChange={(e) => setProjectSettings({ ...projectSettings, extensionName: e.target.value })}
+              />
+            </Box>
+
+            {/* 扩展ID */}
+            <Box>
+              <Typography variant="body2" gutterBottom color="text.secondary">
+                {t('projectSettings.extensionId')}
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                value={projectSettings.extensionId}
+                onChange={(e) => {
+                  setProjectSettings({ ...projectSettings, extensionId: e.target.value });
+                }}
+                error={!validateExtensionId(projectSettings.extensionId) && projectSettings.extensionId.length > 0}
+                helperText={!validateExtensionId(projectSettings.extensionId) && projectSettings.extensionId.length > 0 
+                  ? '扩展ID只能包含大小写字母' 
+                  : '只允许输入大小写字母'}
+              />
+            </Box>
+
+            {/* 作者 */}
+            <Box>
+              <Typography variant="body2" gutterBottom color="text.secondary">
+                {t('projectSettings.extensionAuthor')}
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                value={projectSettings.author}
+                onChange={(e) => setProjectSettings({ ...projectSettings, author: e.target.value })}
+              />
+            </Box>
+
+            {/* 开源协议 */}
+            <Box>
+              <Typography variant="body2" gutterBottom color="text.secondary">
+                {t('projectSettings.extensionLicense')}
+              </Typography>
+              <Select
+                fullWidth
+                size="small"
+                value={projectSettings.license}
+                onChange={(e) => setProjectSettings({ ...projectSettings, license: e.target.value })}
+              >
+                <MenuItem value="MIT">MIT License</MenuItem>
+                <MenuItem value="Apache-2.0">Apache 2.0</MenuItem>
+                <MenuItem value="GPL-3.0">GPL-3.0</MenuItem>
+                <MenuItem value="BSD-3-Clause">BSD-3-Clause</MenuItem>
+                <MenuItem value="MPL-2.0">MPL-2.0</MenuItem>
+                <MenuItem value="Unlicense">Unlicense</MenuItem>
+              </Select>
+            </Box>
+
+            {/* 描述 */}
+            <Box>
+              <Typography variant="body2" gutterBottom color="text.secondary">
+                {t('projectSettings.extensionDescription')}
+              </Typography>
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                size="small"
+                value={projectSettings.description}
+                onChange={(e) => setProjectSettings({ ...projectSettings, description: e.target.value })}
+              />
+            </Box>
+          </Stack>
         </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setProjectSettingsOpen(false)}>
+            {t('projectSettings.cancel')}
+          </Button>
+          <Button 
+            onClick={() => {
+              // 验证扩展ID
+              if (!validateExtensionId(projectSettings.extensionId)) {
+                showError('扩展ID只能包含大小写字母');
+                return;
+              }
+              if (!projectSettings.extensionName.trim()) {
+                showError('扩展名称不能为空');
+                return;
+              }
+              
+              setExtensionName(projectSettings.extensionName);
+              setProjectSettingsOpen(false);
+              showSuccess(t('messages.settingsSaved'));
+            }}
+            variant="contained"
+          >
+            {t('projectSettings.save')}
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
       </ThemeProvider>
