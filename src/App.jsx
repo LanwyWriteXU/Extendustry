@@ -119,6 +119,14 @@ function AppContent() {
     },
   });
 
+  // 设置 CSS 变量以控制 body 背景色
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      '--background-color',
+      darkMode ? '#121212' : '#ffffff'
+    );
+  }, [darkMode]);
+
   // 使用自定义alert
   const { showSuccess, showError, showConfirm } = useAlert();
 

@@ -463,6 +463,7 @@ ${Object.entries(allMenus).map(([menuName, menuDef]) => `          ${menuName}: 
 // Author: ${escapeString(author)}
 // Description: ${escapeString(description)}
 // License: MIT
+// Made with Extendustry<https://cyberneko.cn/Extendustry>
 
 (function (Scratch) {
   "use strict";
