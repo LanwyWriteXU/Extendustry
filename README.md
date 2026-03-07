@@ -1,66 +1,117 @@
 # Extendustry
 
-## 快速开始
+A visual editor for creating Scratch extensions.
 
-### 安装依赖
+## Features
+
+- Visual block editor with drag-and-drop interface
+- Multiple element types: labels, text inputs, number inputs, dropdowns, color pickers, booleans, and statement branches
+- Project file management (save/load .ext files)
+- Internationalization support
+- Dark mode support
+- Real-time block preview using Blockly
+- Block library management
+- Extension configuration (name, ID, author, license, color, icons)
+
+## Quick Start
+
+### Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 启动开发服务器
+### Development
 
 ```bash
 npm run dev
 ```
 
-### 构建生产版本
+### Build
 
 ```bash
 npm run build
 ```
 
-构建完成后，文件会输出到 `online` 目录。
-
-### 预览生产构建
+### Preview Build
 
 ```bash
 npm run preview
 ```
 
-## 部署到 GitHub Pages
+## Usage
 
-1. 构建项目：`npm run build`
-2. 将 `online` 目录内容推送到 GitHub 仓库
-3. 在仓库设置中启用 GitHub Pages
-4. 运行工作流 `Pages` 将自动部署到 GitHub Pages
+### Creating Blocks
 
-## 项目结构
+1. Select block type (command, event, conditional, loop, reporter, boolean)
+2. Click "Add Element" to add elements to your block
+3. Configure element properties in the element list
+4. Preview your block in real-time
+
+### Project Management
+
+- **Save Project**: File > Save Project
+- **Save As**: File > Save As
+- **Open Project**: File > Open Project
+- **New Extension**: File > New Extension
+
+### Block Library
+
+Click the block library button in the toolbar to:
+- View all blocks in the current project
+- Switch between blocks
+- Manage the block list
+
+### Extension Settings
+
+Click the project settings button to:
+- Set extension name and ID
+- Add author information and license
+- Set description and color
+- Upload extension and block icons
+
+## Project Structure
 
 ```
 Extendustry/
 ├── src/
-│   ├── components/
-│   │   ├── AddElementMenu.jsx  # 添加元素菜单组件
-│   │   ├── Alert.jsx           # 提示框组件
-│   │   ├── BlockList.jsx       # 积木列表组件
-│   │   ├── BlockPreview.jsx    # 积木预览组件
-│   │   ├── ElementList.jsx     # 元素列表组件
-│   │   ├── FunctionConfig.jsx  # 函数配置组件
-│   │   └── Toolbar.jsx         # 工具栏组件
-│   ├── utils/
-│   │   └── storage.js          # 本地存储工具
-│   ├── App.jsx                 # 主应用组件
-│   ├── App.css                 # 主应用样式
-│   └── main.jsx                # React 入口文件
-├── public/
-│   └── media/                  # Blockly 媒体资源（自动复制）
-├── index.html                  # HTML 模板
-├── package.json                # 项目配置
-├── vite.config.js              # Vite 配置
-└── README.md                   # 项目说明
+│   ├── components/           # React components
+│   ├── contexts/             # React contexts
+│   ├── locales/              # Internationalization files
+│   ├── utils/                # Utility functions
+│   ├── App.jsx               # Main app component
+│   └── main.jsx              # React entry
+├── public/                   # Static assets
+├── online/                   # Build output
+├── index.html                # HTML template
+├── package.json              # Project config
+├── vite.config.js            # Vite config
+└── README.md                 # This file
+```
+
+## Project File Format
+
+Extendustry uses `.ext` format for project files:
+
+```json
+{
+  "version": "1.0",
+  "extensionName": "My Extension",
+  "extensionSettings": {
+    "extensionName": "My Extension",
+    "extensionId": "myExtension",
+    "author": "Extendustry",
+    "license": "MIT",
+    "description": "",
+    "color1": "#66CCFF",
+    "extensionIcon": "",
+    "blockIcon": ""
+  },
+  "blocks": [...],
+  "savedAt": "2026-03-07T..."
+}
 ```
 
 ## License
 
-[GPL v3](https://www.gnu.org/licenses/gpl-3.0.en.html#license-text)
+GNU General Public License v3.0
